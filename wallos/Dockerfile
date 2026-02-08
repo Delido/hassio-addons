@@ -38,9 +38,15 @@ RUN git clone --depth 1 https://github.com/ellite/Wallos.git /tmp/wallos && \
     cp -r /tmp/wallos/* /var/www/html/ && \
     rm -rf /tmp/wallos
 
-# Copy Nginx configuration
-COPY --from=0 /var/www/html/nginx.conf /etc/nginx/nginx.conf 2>/dev/null || \
-    echo "events { worker_connections 1024; } http { include /etc/nginx/mime.types; default_type application/octet-stream; sendfile on; keepalive_timeout 65; server { listen 80; root /var/www/html; index index.php index.html; location / { try_files \$uri \$uri/ /index.php?\$query_string; } location ~ \.php\$ { fastcgi_pass 127.0.0.1:9000; fastcgi_index index.php; include fastcgi_params; fastcgi_param SCRIPT_FILENAME \$document_root\$fastcgi_script_name; } } }" > /etc/nginx/nginx.conf
+# Copy Nginx configuration from Wallos repo (if exists) or create default
+RUN if [ -f /var/www/html/nginx.conf ]; then \
+        cp /var/www/html/nginx.conf /etc/nginx/nginx.conf; \
+    else \
+        echo "events { worker_connections 1024; } http { include /etc/nginx/mime.types; default_type application/octet-stream; sendfile on; keepalive_timeout 65; server { listen 80; root /var/www/html; index index.php index.html; location / { try_files \$uri \$uri/ /index.php?\$query_string; } location ~ \.php\$ { fastcgi_pass 127.0.0.1:9000; fastcgi_index index.php; include fastcgi_params; fastcgi_param SCRIPT_FILENAME \$document_root\$fastcgi_script_name; } } }" > /etc/nginx/nginx.conf; \
+    fi && \
+    if [ -f /var/www/html/nginx.default.conf ]; then \
+        cp /var/www/html/nginx.default.conf /etc/nginx/http.d/default.conf; \
+    fi
 
 # Set up cron
 RUN if [ -f /var/www/html/cronjobs ]; then \
