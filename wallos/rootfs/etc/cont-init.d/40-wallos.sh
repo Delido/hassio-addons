@@ -10,41 +10,41 @@ if [ -f /data/options.json ]; then
     echo "[init] Timezone set to: ${TZ}"
 fi
 
-# Set up persistent storage
-mkdir -p /data/db /data/logos
+# Set up persistent storage in /share/wallos (persists across reinstalls)
+mkdir -p /share/wallos/db /share/wallos/logos
 
 # Initialize database on first run
-if [ ! -f /data/db/wallos.db ]; then
+if [ ! -f /share/wallos/db/wallos.db ]; then
     echo "[init] First run - initializing database"
 
     # Copy empty database from Wallos repo if it exists
     if [ -f /var/www/html/db/wallos.empty.db ]; then
         echo "[init] Copying empty database template"
-        cp /var/www/html/db/wallos.empty.db /data/db/wallos.db
+        cp /var/www/html/db/wallos.empty.db /share/wallos/db/wallos.db
     else
         echo "[init] No empty database found, will create on first access"
     fi
 fi
 
 # Copy initial logos if they exist and target is empty
-if [ -d /var/www/html/images/uploads/logos ] && [ ! "$(ls -A /data/logos 2>/dev/null)" ]; then
+if [ -d /var/www/html/images/uploads/logos ] && [ ! "$(ls -A /share/wallos/logos 2>/dev/null)" ]; then
     echo "[init] Copying initial logos"
-    cp -rn /var/www/html/images/uploads/logos/. /data/logos/ 2>/dev/null || true
+    cp -rn /var/www/html/images/uploads/logos/. /share/wallos/logos/ 2>/dev/null || true
 fi
 
 # Create directories if they don't exist in the image
 mkdir -p /var/www/html/images/uploads
 
-# Remove original directories and create symlinks
+# Remove original directories and create symlinks to /share/wallos
 rm -rf /var/www/html/db /var/www/html/images/uploads/logos
-ln -s /data/db /var/www/html/db
-ln -s /data/logos /var/www/html/images/uploads/logos
+ln -s /share/wallos/db /var/www/html/db
+ln -s /share/wallos/logos /var/www/html/images/uploads/logos
 
 # Set ownership and permissions
-chown -R www-data:www-data /data/db /data/logos
-chmod -R 775 /data/db/
+chown -R www-data:www-data /share/wallos/db /share/wallos/logos
+chmod -R 775 /share/wallos/db/
 mkdir -p /var/www/html/images/uploads/logos/avatars
-chmod -R 775 /data/logos/
+chmod -R 775 /share/wallos/logos/
 
 echo "[init] Persistent storage ready"
 

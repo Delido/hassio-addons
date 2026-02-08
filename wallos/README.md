@@ -26,12 +26,12 @@ After installation and starting the addon, Wallos appears in the Home Assistant 
 
 ## Persistent Data
 
-The following data is stored persistently in the addon's `/data` directory:
+The following data is stored persistently in Home Assistant's `/share/wallos` directory:
 
-- **Database** (`/data/db`) – All subscription data
-- **Logos** (`/data/logos`) – Uploaded subscription logos
+- **Database** (`/share/wallos/db`) – All subscription data
+- **Logos** (`/share/wallos/logos`) – Uploaded subscription logos
 
-Data survives addon updates and restarts.
+Data survives addon updates, restarts, and **reinstalls** (even when uninstalling the addon without checking "Delete app data").
 
 ## Source
 
