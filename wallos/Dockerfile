@@ -63,7 +63,7 @@ RUN if [ -f /var/www/html/nginx.conf ]; then \
         cp /var/www/html/nginx.conf /etc/wallos-nginx.conf; \
     fi
 
-# Preserve nginx config files before removing default Alpine nginx configs
+# Backup nginx config files before removing default Alpine nginx configs
 RUN mkdir -p /tmp/nginx-backup && \
     cp /etc/nginx/mime.types /tmp/nginx-backup/ 2>/dev/null || true && \
     cp /etc/nginx/fastcgi_params /tmp/nginx-backup/ 2>/dev/null || true && \
@@ -71,12 +71,14 @@ RUN mkdir -p /tmp/nginx-backup && \
     cp /etc/nginx/uwsgi_params /tmp/nginx-backup/ 2>/dev/null || true && \
     cp /etc/nginx/scgi_params /tmp/nginx-backup/ 2>/dev/null || true && \
     rm -rf /etc/nginx && \
-    mkdir -p /etc/nginx/servers /etc/nginx/includes && \
-    cp /tmp/nginx-backup/* /etc/nginx/ && \
-    rm -rf /tmp/nginx-backup
+    mkdir -p /etc/nginx/servers /etc/nginx/includes
 
 # Copy nginx reverse proxy configs
 COPY rootfs/etc/nginx /etc/nginx
+
+# Restore the backed up nginx parameter files
+RUN cp /tmp/nginx-backup/* /etc/nginx/ && \
+    rm -rf /tmp/nginx-backup
 
 # Copy init and service scripts
 COPY rootfs/etc/cont-init.d /etc/cont-init.d
