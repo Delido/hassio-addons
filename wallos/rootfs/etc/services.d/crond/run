@@ -1,6 +1,6 @@
-#!/usr/bin/with-contenv bashio
+#!/command/with-contenv bash
 set -e
 
-bashio::log.info "Starting crond..."
+echo "[crond] Starting crond..."
 
 exec crond -f

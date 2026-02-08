@@ -31,7 +31,8 @@ RUN apk upgrade --no-cache && \
     sqlite \
     libwebp-dev \
     jq \
-    git && \
+    git \
+    netcat-openbsd && \
     docker-php-ext-install pdo pdo_sqlite calendar && \
     docker-php-ext-enable pdo pdo_sqlite && \
     docker-php-ext-configure gd --with-freetype --with-jpeg --with-webp && \
@@ -65,11 +66,17 @@ RUN if [ -f /var/www/html/nginx.conf ]; then \
 # Remove default Alpine nginx configs
 RUN rm -rf /etc/nginx && mkdir -p /etc/nginx/servers /etc/nginx/includes
 
-# Copy rootfs (nginx reverse proxy configs and init scripts)
-COPY rootfs /
+# Copy nginx reverse proxy configs
+COPY rootfs/etc/nginx /etc/nginx
 
-# Make init scripts and service scripts executable
-RUN chmod +x /etc/cont-init.d/*.sh && \
+# Copy init and service scripts
+COPY rootfs/etc/cont-init.d /etc/cont-init.d
+COPY rootfs/etc/services.d /etc/services.d
+
+# Fix line endings and make scripts executable
+RUN find /etc/cont-init.d/ -type f -exec sed -i 's/\r$//' {} \; && \
+    find /etc/services.d/ -type f -exec sed -i 's/\r$//' {} \; && \
+    chmod +x /etc/cont-init.d/*.sh && \
     chmod +x /etc/services.d/*/run
 
 # Set up cron

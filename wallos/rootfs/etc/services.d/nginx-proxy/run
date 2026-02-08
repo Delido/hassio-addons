@@ -1,10 +1,17 @@
-#!/usr/bin/with-contenv bashio
+#!/command/with-contenv bash
 set -e
 
-# Wait for Wallos backend to be ready
-bashio::log.info "Waiting for Wallos backend on port 8080..."
-bashio::net.wait_for 8080 localhost 300
+echo "[nginx-proxy] Waiting for Wallos backend on port 8080..."
 
-bashio::log.info "Starting nginx reverse proxy..."
+# Simple wait loop
+for i in {1..60}; do
+    if nc -z localhost 8080 2>/dev/null; then
+        echo "[nginx-proxy] Wallos backend is ready!"
+        break
+    fi
+    sleep 1
+done
+
+echo "[nginx-proxy] Starting nginx reverse proxy..."
 
 exec nginx

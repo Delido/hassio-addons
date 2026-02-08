@@ -1,6 +1,6 @@
-#!/usr/bin/with-contenv bashio
+#!/command/with-contenv bash
 set -e
 
-bashio::log.info "Starting Wallos backend nginx (port 8080)..."
+echo "[wallos-nginx] Starting Wallos backend nginx (port 8080)..."
 
 exec nginx -c /etc/wallos-nginx.conf -g 'daemon off;'

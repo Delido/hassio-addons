@@ -1,6 +1,6 @@
-#!/usr/bin/with-contenv bashio
+#!/command/with-contenv bash
 set -e
 
-bashio::log.info "Starting PHP-FPM..."
+echo "[php-fpm] Starting PHP-FPM..."
 
 exec php-fpm -F

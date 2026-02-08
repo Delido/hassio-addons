@@ -1,23 +1,24 @@
-#!/usr/bin/with-contenv bashio
+#!/command/with-contenv bash
 set -e
 
-bashio::log.info "Configuring nginx reverse proxy..."
+echo "[init] Configuring nginx reverse proxy..."
 
-# Get addon configuration
-declare interface
-declare port
-interface=$(bashio::addon.ip_address)
-port=$(bashio::addon.ingress_port)
+# Check if running in Home Assistant
+if [ -f /data/options.json ]; then
+    # Get addon configuration using jq
+    INTERFACE=$(jq -r '.interface // "0.0.0.0"' /data/options.json 2>/dev/null || echo "0.0.0.0")
+    PORT=$(jq -r '.ingress_port // 80' /data/options.json 2>/dev/null || echo "80")
+else
+    INTERFACE="0.0.0.0"
+    PORT="80"
+fi
 
-bashio::log.info "Ingress interface: ${interface}"
-bashio::log.info "Ingress port: ${port}"
+echo "[init] Ingress interface: ${INTERFACE}"
+echo "[init] Ingress port: ${PORT}"
 
-# Render ingress template
-bashio::var.json \
-    interface "${interface}" \
-    port "^${port}" \
-    | tempio \
-        -template /etc/nginx/templates/ingress.gtpl \
-        -out /etc/nginx/servers/ingress.conf
+# Render ingress template using sed (simpler than tempio)
+sed -e "s|{{ .interface }}|${INTERFACE}|g" \
+    -e "s|{{ .port }}|${PORT}|g" \
+    /etc/nginx/templates/ingress.gtpl > /etc/nginx/servers/ingress.conf
 
-bashio::log.info "Nginx configuration generated successfully"
+echo "[init] Nginx configuration generated successfully"
