@@ -55,8 +55,8 @@ NGINX_PID=$!
 sleep 1
 
 # Initialize database if needed
-/usr/local/bin/php /var/www/html/endpoints/cronjobs/createdatabase.php 2>/dev/null || true
-/usr/local/bin/php /var/www/html/endpoints/db/migrate.php 2>/dev/null || true
+/usr/bin/php /var/www/html/endpoints/cronjobs/createdatabase.php 2>/dev/null || true
+/usr/bin/php /var/www/html/endpoints/db/migrate.php 2>/dev/null || true
 
 # Set permissions
 chmod -R 755 /var/www/html/db/ 2>/dev/null || true
@@ -64,9 +64,9 @@ mkdir -p /var/www/html/images/uploads/logos/avatars 2>/dev/null || true
 chmod -R 755 /var/www/html/images/uploads/logos 2>/dev/null || true
 
 # Run initial cron jobs
-/usr/local/bin/php /var/www/html/endpoints/cronjobs/updatenextpayment.php 2>/dev/null || true
-/usr/local/bin/php /var/www/html/endpoints/cronjobs/updateexchange.php 2>/dev/null || true
-/usr/local/bin/php /var/www/html/endpoints/cronjobs/checkforupdates.php 2>/dev/null || true
+/usr/bin/php /var/www/html/endpoints/cronjobs/updatenextpayment.php 2>/dev/null || true
+/usr/bin/php /var/www/html/endpoints/cronjobs/updateexchange.php 2>/dev/null || true
+/usr/bin/php /var/www/html/endpoints/cronjobs/checkforupdates.php 2>/dev/null || true
 
 echo "[Wallos] All services started successfully"
 
