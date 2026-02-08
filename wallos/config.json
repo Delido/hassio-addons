@@ -1,6 +1,6 @@
 {
   "name": "Wallos",
-  "version": "1.1.2",
+  "version": "1.1.3",
   "slug": "wallos",
   "description": "Self-hosted subscription and payment tracker",
   "url": "https://github.com/Delido/hassio-addons/blob/master/wallos/README.md",
@@ -22,7 +22,7 @@
   "homeassistant_api": false,
   "init": false,
   "ports": {
-    "3422/tcp": 3422
+    "3422/tcp": 80
   },
   "ports_description": {
     "3422/tcp": "Wallos web interface (external access)"

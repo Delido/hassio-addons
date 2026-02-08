@@ -63,7 +63,7 @@ RUN if [ -f /var/www/html/cronjobs ]; then \
 COPY run.sh /run.sh
 RUN chmod +x /run.sh
 
-EXPOSE 80 3422
+EXPOSE 80
 
 ENTRYPOINT ["dumb-init", "--"]
 CMD ["/run.sh"]

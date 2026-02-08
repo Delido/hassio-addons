@@ -7,7 +7,6 @@ if [ -f /data/options.json ]; then
 fi
 
 echo "[Wallos] Starting with timezone: ${TZ}"
-echo "[Wallos] External port: 3422"
 
 # Set up persistent storage
 mkdir -p /data/db /data/logos
@@ -55,27 +54,6 @@ echo "[Wallos] Running database migrations"
 /usr/local/bin/php /var/www/html/endpoints/db/migrate.php
 
 echo "[Wallos] Database initialization complete"
-
-# Configure nginx to listen on external port
-echo "[Wallos] Configuring nginx for external port 3422"
-cat > /etc/nginx/http.d/external.conf <<EOF
-server {
-    listen 3422;
-    root /var/www/html;
-    index index.php index.html;
-
-    location / {
-        try_files \$uri \$uri/ /index.php?\$query_string;
-    }
-
-    location ~ \.php$ {
-        fastcgi_pass 127.0.0.1:9000;
-        fastcgi_index index.php;
-        include fastcgi_params;
-        fastcgi_param SCRIPT_FILENAME \$document_root\$fastcgi_script_name;
-    }
-}
-EOF
 
 # Start PHP-FPM, Crond, and Nginx (like original startup.sh)
 echo "Launching php-fpm"
