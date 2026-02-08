@@ -1,6 +1,6 @@
 {
   "name": "Wallos",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "slug": "wallos",
   "description": "Self-hosted subscription and payment tracker",
   "url": "https://github.com/Delido/hassio-addons/blob/master/wallos/README.md",
