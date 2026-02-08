@@ -1,0 +1,33 @@
+{
+  "name": "Wallos",
+  "version": "1.0.0",
+  "slug": "wallos",
+  "description": "Self-hosted subscription and payment tracker",
+  "url": "https://github.com/Delido/hassio-addons/blob/master/wallos/README.md",
+  "startup": "application",
+  "boot": "auto",
+  "arch": [
+    "aarch64",
+    "amd64",
+    "armhf",
+    "armv7",
+    "i386"
+  ],
+  "ingress": true,
+  "ingress_port": 80,
+  "panel_icon": "mdi:credit-card-refresh",
+  "panel_title": "Wallos",
+  "hassio_api": false,
+  "hassio_role": "default",
+  "homeassistant_api": false,
+  "init": false,
+  "map": [
+    "data:rw"
+  ],
+  "options": {
+    "TZ": "Europe/Berlin"
+  },
+  "schema": {
+    "TZ": "str"
+  }
+}
