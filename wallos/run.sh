@@ -3,10 +3,12 @@
 # Read options from Home Assistant
 if [ -f /data/options.json ]; then
     TZ=$(jq -r '.TZ // "Europe/Berlin"' /data/options.json)
+    EXTERNAL_PORT=$(jq -r '.external_port // empty' /data/options.json)
     export TZ
 fi
 
 echo "[Wallos] Starting with timezone: ${TZ}"
+echo "[Wallos] External port: ${EXTERNAL_PORT:-disabled}"
 
 # Set up persistent storage
 mkdir -p /data/db /data/logos
@@ -54,6 +56,31 @@ echo "[Wallos] Running database migrations"
 /usr/local/bin/php /var/www/html/endpoints/db/migrate.php
 
 echo "[Wallos] Database initialization complete"
+
+# Configure external port if specified
+if [ -n "$EXTERNAL_PORT" ] && [ "$EXTERNAL_PORT" -gt 0 ]; then
+    echo "[Wallos] Configuring nginx for external port ${EXTERNAL_PORT}"
+    cat > /etc/nginx/http.d/external.conf <<EOF
+server {
+    listen ${EXTERNAL_PORT};
+    root /var/www/html;
+    index index.php index.html;
+
+    location / {
+        try_files \$uri \$uri/ /index.php?\$query_string;
+    }
+
+    location ~ \.php$ {
+        fastcgi_pass 127.0.0.1:9000;
+        fastcgi_index index.php;
+        include fastcgi_params;
+        fastcgi_param SCRIPT_FILENAME \$document_root\$fastcgi_script_name;
+    }
+}
+EOF
+else
+    echo "[Wallos] External port disabled (only Ingress available)"
+fi
 
 # Start PHP-FPM, Crond, and Nginx (like original startup.sh)
 echo "Launching php-fpm"
