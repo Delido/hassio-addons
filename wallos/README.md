@@ -15,6 +15,7 @@ Self-hosted subscription and payment tracker with sidebar integration.
 | Option | Default | Description |
 |--------|---------|-------------|
 | `TZ` | `Europe/Berlin` | Timezone for the application |
+| `external_port` | `3422` | External port for direct web access |
 
 ## Usage
 

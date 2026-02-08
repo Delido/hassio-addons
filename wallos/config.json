@@ -1,6 +1,6 @@
 {
   "name": "Wallos",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "slug": "wallos",
   "description": "Self-hosted subscription and payment tracker",
   "url": "https://github.com/Delido/hassio-addons/blob/master/wallos/README.md",
@@ -21,13 +21,21 @@
   "hassio_role": "default",
   "homeassistant_api": false,
   "init": false,
+  "ports": {
+    "3422/tcp": 3422
+  },
+  "ports_description": {
+    "3422/tcp": "Wallos web interface (external access)"
+  },
   "map": [
     "data:rw"
   ],
   "options": {
-    "TZ": "Europe/Berlin"
+    "TZ": "Europe/Berlin",
+    "external_port": 3422
   },
   "schema": {
-    "TZ": "str"
+    "TZ": "str",
+    "external_port": "port"
   }
 }
