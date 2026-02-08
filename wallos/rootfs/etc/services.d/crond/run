@@ -3,4 +3,4 @@ set -e
 
 echo "[crond] Starting crond..."
 
-exec crond -f -L /dev/stdout
+exec crond -f -L /dev/stdout 2>&1 | grep -v "setpgid"
