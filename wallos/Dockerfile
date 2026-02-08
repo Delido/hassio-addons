@@ -76,8 +76,9 @@ RUN mkdir -p /tmp/nginx-backup && \
 # Copy nginx reverse proxy configs
 COPY rootfs/etc/nginx /etc/nginx
 
-# Restore the backed up nginx parameter files
+# Restore the backed up nginx parameter files to both /etc/nginx/ and /etc/
 RUN cp /tmp/nginx-backup/* /etc/nginx/ && \
+    cp /tmp/nginx-backup/* /etc/ && \
     rm -rf /tmp/nginx-backup
 
 # Copy init and service scripts
