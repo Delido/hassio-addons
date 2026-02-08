@@ -38,5 +38,8 @@ ln -s /data/logos /var/www/html/images/uploads/logos
 
 echo "[Wallos] Persistent storage ready"
 
-# Start Wallos (startup.sh starts PHP-FPM and Nginx)
-exec /var/www/html/startup.sh
+# Start PHP-FPM in background
+php-fpm82 &
+
+# Start Nginx in foreground
+exec nginx -g 'daemon off;'
