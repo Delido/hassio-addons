@@ -19,7 +19,6 @@ RUN apk add --no-cache \
     php83-dom \
     php83-xml \
     php83-calendar \
-    php83-imagick \
     dumb-init \
     curl
 
