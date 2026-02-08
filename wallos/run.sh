@@ -38,8 +38,37 @@ ln -s /data/logos /var/www/html/images/uploads/logos
 
 echo "[Wallos] Persistent storage ready"
 
-# Start PHP-FPM in background
-php-fpm82 &
+# Start PHP-FPM, Crond, and Nginx (like original startup.sh)
+echo "Launching php-fpm"
+php-fpm -F &
+PHP_FPM_PID=$!
 
-# Start Nginx in foreground
-exec nginx -g 'daemon off;'
+echo "Launching crond"
+crond -f &
+CROND_PID=$!
+
+echo "Launching nginx"
+nginx -g 'daemon off;' &
+NGINX_PID=$!
+
+# Wait for services to start
+sleep 1
+
+# Initialize database if needed
+/usr/local/bin/php /var/www/html/endpoints/cronjobs/createdatabase.php 2>/dev/null || true
+/usr/local/bin/php /var/www/html/endpoints/db/migrate.php 2>/dev/null || true
+
+# Set permissions
+chmod -R 755 /var/www/html/db/ 2>/dev/null || true
+mkdir -p /var/www/html/images/uploads/logos/avatars 2>/dev/null || true
+chmod -R 755 /var/www/html/images/uploads/logos 2>/dev/null || true
+
+# Run initial cron jobs
+/usr/local/bin/php /var/www/html/endpoints/cronjobs/updatenextpayment.php 2>/dev/null || true
+/usr/local/bin/php /var/www/html/endpoints/cronjobs/updateexchange.php 2>/dev/null || true
+/usr/local/bin/php /var/www/html/endpoints/cronjobs/checkforupdates.php 2>/dev/null || true
+
+echo "[Wallos] All services started successfully"
+
+# Wait for all child processes
+wait
