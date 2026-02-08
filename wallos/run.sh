@@ -38,10 +38,11 @@ rm -rf /var/www/html/db /var/www/html/images/uploads/logos
 ln -s /data/db /var/www/html/db
 ln -s /data/logos /var/www/html/images/uploads/logos
 
-# Set permissions before initialization
-chmod -R 755 /data/db/ 2>/dev/null || true
+# Set ownership and permissions before initialization
+chown -R www-data:www-data /data/db /data/logos
+chmod -R 775 /data/db/
 mkdir -p /var/www/html/images/uploads/logos/avatars
-chmod -R 755 /data/logos/ 2>/dev/null || true
+chmod -R 775 /data/logos/
 
 echo "[Wallos] Persistent storage ready"
 
