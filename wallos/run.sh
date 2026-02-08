@@ -38,5 +38,5 @@ ln -s /data/logos /var/www/html/images/uploads/logos
 
 echo "[Wallos] Persistent storage ready"
 
-# Start Apache with PHP (default command in bellamy/wallos image)
-exec apache2-foreground
+# Start Wallos (startup.sh starts PHP-FPM and Nginx)
+exec /var/www/html/startup.sh
