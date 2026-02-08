@@ -11,21 +11,23 @@ echo "[Wallos] Starting with timezone: ${TZ}"
 # Set up persistent storage
 mkdir -p /data/db /data/logos
 
-# Only migrate existing data on first run, then use bind mounts
-if [ ! -f /data/db/.initialized ]; then
-    echo "[Wallos] First run - initializing persistent storage"
+# Initialize database on first run
+if [ ! -f /data/db/wallos.db ]; then
+    echo "[Wallos] First run - initializing database"
 
-    # Copy initial database if it exists in the image
-    if [ -d /var/www/html/db ] && [ "$(ls -A /var/www/html/db 2>/dev/null)" ]; then
-        cp -rn /var/www/html/db/. /data/db/ 2>/dev/null || true
+    # Copy empty database from Wallos repo if it exists
+    if [ -f /var/www/html/db/wallos.empty.db ]; then
+        echo "[Wallos] Copying empty database template"
+        cp /var/www/html/db/wallos.empty.db /data/db/wallos.db
+    else
+        echo "[Wallos] No empty database found, will create on first access"
     fi
+fi
 
-    # Copy initial logos if they exist in the image
-    if [ -d /var/www/html/images/uploads/logos ] && [ "$(ls -A /var/www/html/images/uploads/logos 2>/dev/null)" ]; then
-        cp -rn /var/www/html/images/uploads/logos/. /data/logos/ 2>/dev/null || true
-    fi
-
-    touch /data/db/.initialized
+# Copy initial logos if they exist and target is empty
+if [ -d /var/www/html/images/uploads/logos ] && [ ! "$(ls -A /data/logos 2>/dev/null)" ]; then
+    echo "[Wallos] Copying initial logos"
+    cp -rn /var/www/html/images/uploads/logos/. /data/logos/ 2>/dev/null || true
 fi
 
 # Create directories if they don't exist in the image
