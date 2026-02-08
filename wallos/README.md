@@ -18,7 +18,7 @@ Self-hosted subscription and payment tracker with sidebar integration.
 
 ## Ports
 
-- **3422** - Web interface (external access)
+- **3423** - Web interface (external access)
 
 ## Usage
 
