@@ -63,8 +63,11 @@ RUN if [ -f /var/www/html/nginx.conf ]; then \
         cp /var/www/html/nginx.conf /etc/wallos-nginx.conf; \
     fi
 
-# Remove default Alpine nginx configs
-RUN rm -rf /etc/nginx && mkdir -p /etc/nginx/servers /etc/nginx/includes
+# Preserve mime.types before removing default Alpine nginx configs
+RUN cp /etc/nginx/mime.types /tmp/mime.types && \
+    rm -rf /etc/nginx && \
+    mkdir -p /etc/nginx/servers /etc/nginx/includes && \
+    mv /tmp/mime.types /etc/nginx/mime.types
 
 # Copy nginx reverse proxy configs
 COPY rootfs/etc/nginx /etc/nginx

@@ -3,4 +3,4 @@ set -e
 
 echo "[crond] Starting crond..."
 
-exec crond -f
+exec crond -f -L /dev/stdout
