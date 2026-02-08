@@ -16,6 +16,10 @@ Self-hosted subscription and payment tracker with sidebar integration.
 |--------|---------|-------------|
 | `TZ` | `Europe/Berlin` | Timezone for the application |
 
+## Ports
+
+- **3422** - Web interface (external access)
+
 ## Usage
 
 After installation and starting the addon, Wallos appears in the Home Assistant sidebar under the name **Wallos**.
