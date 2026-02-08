@@ -2,10 +2,18 @@ FROM php:8.3-fpm-alpine
 
 WORKDIR /var/www/html
 
+# Install s6-overlay for service management
+ARG S6_OVERLAY_VERSION=3.1.5.0
+ADD https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-noarch.tar.xz /tmp
+ADD https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-x86_64.tar.xz /tmp
+RUN tar -C / -Jxpf /tmp/s6-overlay-noarch.tar.xz && \
+    tar -C / -Jxpf /tmp/s6-overlay-x86_64.tar.xz && \
+    rm -f /tmp/s6-overlay-*.tar.xz
+
 # Update packages and install dependencies
 RUN apk upgrade --no-cache && \
     apk add --no-cache \
-    dumb-init \
+    bash \
     shadow \
     sqlite-dev \
     libpng libpng-dev \
@@ -33,22 +41,36 @@ RUN apk upgrade --no-cache && \
     docker-php-ext-enable imagick && \
     apk del .build-deps
 
+# Install Home Assistant tools (bashio and tempio)
+ARG BASHIO_VERSION=0.16.2
+ARG TEMPIO_VERSION=2021.09.0
+RUN curl -L -s -o /usr/bin/bashio \
+    "https://github.com/hassio-addons/bashio/releases/download/v${BASHIO_VERSION}/bashio" && \
+    chmod a+x /usr/bin/bashio && \
+    curl -L -s -o /usr/bin/tempio \
+    "https://github.com/home-assistant/tempio/releases/download/${TEMPIO_VERSION}/tempio_amd64" && \
+    chmod a+x /usr/bin/tempio
+
 # Clone Wallos from GitHub
 RUN git clone --depth 1 https://github.com/ellite/Wallos.git /tmp/wallos && \
     cp -r /tmp/wallos/* /var/www/html/ && \
     rm -rf /tmp/wallos
 
-# Remove default Alpine nginx configs to avoid conflicts
-RUN rm -f /etc/nginx/http.d/default.conf && \
-    rm -f /etc/nginx/conf.d/default.conf && \
-    mkdir -p /etc/nginx/conf.d
-
-# Copy only the main Wallos nginx.conf (it already contains the server block)
+# Patch Wallos nginx.conf to listen on port 8080 instead of 80
 RUN if [ -f /var/www/html/nginx.conf ]; then \
-        cp /var/www/html/nginx.conf /etc/nginx/nginx.conf; \
-    else \
-        echo "events { worker_connections 1024; } http { include /etc/nginx/mime.types; default_type application/octet-stream; sendfile on; keepalive_timeout 65; server { listen 80; root /var/www/html; index index.php index.html; location / { try_files \$uri \$uri/ /index.php?\$query_string; } location ~ \.php\$ { fastcgi_pass 127.0.0.1:9000; fastcgi_index index.php; include fastcgi_params; fastcgi_param SCRIPT_FILENAME \$document_root\$fastcgi_script_name; } } }" > /etc/nginx/nginx.conf; \
+        sed -i 's/listen.*80/listen 127.0.0.1:8080/g' /var/www/html/nginx.conf && \
+        cp /var/www/html/nginx.conf /etc/wallos-nginx.conf; \
     fi
+
+# Remove default Alpine nginx configs
+RUN rm -rf /etc/nginx && mkdir -p /etc/nginx/servers /etc/nginx/includes
+
+# Copy rootfs (nginx reverse proxy configs and init scripts)
+COPY rootfs /
+
+# Make init scripts and service scripts executable
+RUN chmod +x /etc/cont-init.d/*.sh && \
+    chmod +x /etc/services.d/*/run
 
 # Set up cron
 RUN if [ -f /var/www/html/cronjobs ]; then \
@@ -61,11 +83,6 @@ RUN if [ -f /var/www/html/cronjobs ]; then \
     echo 'pm.max_children = 15' >> /usr/local/etc/php-fpm.d/zz-docker.conf && \
     echo 'pm.max_requests = 500' >> /usr/local/etc/php-fpm.d/zz-docker.conf
 
-# Copy HA addon startup script
-COPY run.sh /run.sh
-RUN chmod +x /run.sh
-
 EXPOSE 80
 
-ENTRYPOINT ["dumb-init", "--"]
-CMD ["/run.sh"]
+ENTRYPOINT ["/init"]
