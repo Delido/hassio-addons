@@ -1,6 +1,6 @@
 {
   "name": "Wallos",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "slug": "wallos",
   "description": "Self-hosted subscription and payment tracker",
   "url": "https://github.com/Delido/hassio-addons/blob/master/wallos/README.md",
@@ -31,11 +31,9 @@
     "data:rw"
   ],
   "options": {
-    "TZ": "Europe/Berlin",
-    "external_port": 3422
+    "TZ": "Europe/Berlin"
   },
   "schema": {
-    "TZ": "str",
-    "external_port": "port"
+    "TZ": "str"
   }
 }
