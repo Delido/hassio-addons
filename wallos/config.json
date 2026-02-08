@@ -20,17 +20,14 @@
   "hassio_api": false,
   "hassio_role": "default",
   "homeassistant_api": false,
-  "host_network": true,
   "init": false,
   "map": [
     "data:rw"
   ],
   "options": {
-    "TZ": "Europe/Berlin",
-    "external_port": 3422
+    "TZ": "Europe/Berlin"
   },
   "schema": {
-    "TZ": "str",
-    "external_port": "int?"
+    "TZ": "str"
   }
 }
