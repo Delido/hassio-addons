@@ -24,10 +24,10 @@
   "homeassistant_api": false,
   "init": false,
   "ports": {
-    "3423/tcp": 80
+    "80/tcp": 3423
   },
   "ports_description": {
-    "3423/tcp": "Web interface"
+    "80/tcp": "Web interface"
   },
   "map": [
     "data:rw"
