@@ -11,9 +11,6 @@
     "amd64",
     "aarch64"
   ],
-  "ingress": true,
-  "ingress_port": 80,
-  "ingress_stream": true,
   "panel_icon": "mdi:store-24-hour",
   "panel_title": "MinIO",
   "hassio_api": false,
@@ -24,9 +21,7 @@
   "privileged": [],
   "timeout": 90,
   "stage": "experimental",
-  "map": [
-    "share:rw"
-  ],
+  "map": [],
   "ports": {
     "9001/tcp": 9001,
     "9000/tcp": 9000

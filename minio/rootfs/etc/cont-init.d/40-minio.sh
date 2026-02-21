@@ -23,10 +23,8 @@ echo "[minio-init] Timezone set to: ${TZ}"
 mkdir -p /var/run/s6/container_environment
 printf "%s" "${MINIO_USER}" > /var/run/s6/container_environment/MINIO_ROOT_USER
 printf "%s" "${MINIO_PASS}" > /var/run/s6/container_environment/MINIO_ROOT_PASSWORD
-printf "%s" "" > /var/run/s6/container_environment/MINIO_BROWSER_REDIRECT_URL
-
-# Create persistent data directory in /share
-echo "[minio-init] Setting up persistent storage in /share/minio..."
-mkdir -p /share/minio
+# Create persistent data directory in /data
+echo "[minio-init] Setting up persistent storage in /data/minio..."
+mkdir -p /data/minio
 
 echo "[minio-init] MinIO initialization complete"

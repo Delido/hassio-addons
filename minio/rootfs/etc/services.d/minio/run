@@ -3,6 +3,6 @@ set -e
 
 echo "[minio] Starting MinIO server..."
 
-exec /usr/bin/minio server /share/minio \
+exec /usr/bin/minio server /data/minio \
     --address :9000 \
     --console-address :9002
