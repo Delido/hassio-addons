@@ -1,0 +1,17 @@
+#!/command/with-contenv bash
+set -e
+
+echo "[nginx-proxy] Waiting for MinIO console on port 9002..."
+
+# Simple wait loop
+for i in {1..60}; do
+    if nc -z localhost 9002 2>/dev/null; then
+        echo "[nginx-proxy] MinIO console is ready!"
+        break
+    fi
+    sleep 1
+done
+
+echo "[nginx-proxy] Starting nginx reverse proxy..."
+
+exec nginx
