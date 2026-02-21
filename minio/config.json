@@ -1,6 +1,6 @@
 {
   "name": "MinIO",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "slug": "minio",
   "description": "MinIO object storage server",
   "url": "https://github.com/Delido/hassio-addons/blob/master/minio/README.md",
