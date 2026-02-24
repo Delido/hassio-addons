@@ -1,0 +1,25 @@
+name: "PetKit BLE MQTT"
+description: "Direkte BLE-Verbindung zu PetKit CTW3/W5 Fontäne. Kein Cloud, kein Relay."
+version: "1.0.0"
+slug: "petkit_ble_mqtt"
+init: false
+arch:
+  - amd64
+
+bluetooth: true
+
+options:
+  fountain_mac: "A4:C1:38:52:34:98"
+  mqtt_broker: "core-mosquitto"
+  mqtt_port: 1883
+  mqtt_user: "mqtt"
+  mqtt_password: ""
+  log_level: "INFO"
+
+schema:
+  fountain_mac: str
+  mqtt_broker: str
+  mqtt_port: int
+  mqtt_user: str
+  mqtt_password: str
+  log_level: "DEBUG|INFO|WARNING|ERROR"
