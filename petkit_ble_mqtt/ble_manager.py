@@ -32,8 +32,6 @@ class BLEManager:
             self.logger.info(f"Connecting to {address}...")
             client = BleakClient(address, timeout=65.0)
             await client.connect()
-            # Explicitly trigger service discovery to avoid "Service Discovery has not been performed yet"
-            await client.get_services()
             self.connected_devices[address] = client
             self.logger.info(f"Connected to {address}")
             await self.start_notifications(address, Constants.READ_UUID)
