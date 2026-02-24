@@ -1,5 +1,22 @@
 {
   "name": "Delido addons for Home Assistant",
   "url": "https://github.com/Delido/hassio-addons",
-  "maintainer": "Sebastian M <>"
+  "maintainer": "Sebastian M <>",
+  "addons": [
+    {
+      "slug": "minio",
+      "name": "MinIO",
+      "description": "MinIO object storage server"
+    },
+    {
+      "slug": "wallos",
+      "name": "Wallos",
+      "description": "Open-source subscription tracker"
+    },
+    {
+      "slug": "petkit_ble_mqtt",
+      "name": "PetKit BLE MQTT",
+      "description": "Direkte BLE-Verbindung zu PetKit CTW3/W5 Fontaene via MQTT"
+    }
+  ]
 }

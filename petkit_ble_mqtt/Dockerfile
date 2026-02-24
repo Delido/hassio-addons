@@ -19,8 +19,11 @@ RUN git clone https://github.com/slespersen/PetkitW5BLEMQTT.git /app
 # Make the library importable
 RUN ln -s /app/PetkitW5BLEMQTT /usr/local/lib/python3.11/site-packages/PetkitW5BLEMQTT
 
-# Patched ble_manager: None-check fuer dev.name + get_services() nach connect + reconnect bei Write-Fehler
+# Patched ble_manager: None-check fuer dev.name + reconnect bei Write-Fehler
 COPY ble_manager.py /app/PetkitW5BLEMQTT/ble_manager.py
+
+# Patched main.py: konfigurierbares heartbeat_interval
+COPY main.py /app/main.py
 
 COPY run.sh /run.sh
 RUN chmod +x /run.sh
