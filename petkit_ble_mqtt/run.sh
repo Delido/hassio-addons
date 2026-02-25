@@ -18,6 +18,10 @@ echo "[PetKit BLE] Poll-Intervall: ${INTERVAL}s"
 
 # Auto-restart loop - BLE connections koennen abreissen
 while true; do
+    # BlueZ Notify-Lock der alten Session freigeben (kein 'remove' - wuerde Bonding-Keys loeschen)
+    bluetoothctl disconnect "$MAC" 2>/dev/null || true
+    sleep 8
+
     echo "[PetKit BLE] Verbinde..."
     python3 /app/main.py \
         --address "$MAC" \
