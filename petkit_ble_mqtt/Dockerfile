@@ -22,6 +22,9 @@ RUN ln -s /app/PetkitW5BLEMQTT /usr/local/lib/python3.11/site-packages/PetkitW5B
 # Patched ble_manager: None-check fuer dev.name + reconnect bei Write-Fehler
 COPY ble_manager.py /app/PetkitW5BLEMQTT/ble_manager.py
 
+# Patched utils.py: Division-by-zero Guard fuer SMART-Modus (time_on=0)
+COPY utils.py /app/PetkitW5BLEMQTT/utils.py
+
 # Patched main.py: konfigurierbares heartbeat_interval
 COPY main.py /app/main.py
 
