@@ -25,6 +25,12 @@ COPY ble_manager.py /app/PetkitW5BLEMQTT/ble_manager.py
 # Patched utils.py: Division-by-zero Guard fuer SMART-Modus (time_on=0)
 COPY utils.py /app/PetkitW5BLEMQTT/utils.py
 
+# Patched parsers.py: CTW3-Branch in device_status() - korrekte Byte-Offsets + pet_drinking
+COPY parsers.py /app/PetkitW5BLEMQTT/parsers.py
+
+# Patched mqtt_payloads.py: pet_drinking Entity fuer CTW3
+COPY mqtt_payloads.py /app/PetkitW5BLEMQTT/mqtt_payloads.py
+
 # Patched main.py: konfigurierbares heartbeat_interval
 COPY main.py /app/main.py
 
