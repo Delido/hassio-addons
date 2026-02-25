@@ -39,18 +39,23 @@ class BLEManager:
                     await self.start_notifications(address, Constants.READ_UUID)
                     return True
                 except Exception as e:
-                    if "NotPermitted" in str(e) or "Notify acquired" in str(e):
-                        self.logger.warning(f"BlueZ Notify lock held, waiting {attempt * 10}s before retry...")
-                        try:
-                            await client.disconnect()
-                        except Exception:
-                            pass
-                        if address in self.connected_devices:
-                            del self.connected_devices[address]
-                        await asyncio.sleep(attempt * 10)
+                    err = str(e)
+                    if "NotPermitted" in err or "Notify acquired" in err:
+                        wait = attempt * 10
+                        self.logger.warning(f"BlueZ Notify lock held, waiting {wait}s before retry...")
+                    elif "Not connected" in err:
+                        wait = 5
+                        self.logger.warning(f"BLE service discovery failed (Not connected), waiting {wait}s before retry...")
                     else:
                         raise
-            self.logger.error(f"Could not acquire BLE notify after 3 attempts")
+                    try:
+                        await client.disconnect()
+                    except Exception:
+                        pass
+                    if address in self.connected_devices:
+                        del self.connected_devices[address]
+                    await asyncio.sleep(wait)
+            self.logger.error(f"Could not connect to {address} after 3 attempts")
             return False
         else:
             self.logger.error(f"Device {address} not found")
