@@ -28,6 +28,9 @@ COPY utils.py /app/PetkitW5BLEMQTT/utils.py
 # Patched parsers.py: CTW3-Branch in device_status() - korrekte Byte-Offsets + pet_drinking
 COPY parsers.py /app/PetkitW5BLEMQTT/parsers.py
 
+# Patched device.py: _pet_drinking Attribut + Status-Key Whitelist
+COPY device.py /app/PetkitW5BLEMQTT/device.py
+
 # Patched mqtt_payloads.py: pet_drinking Entity fuer CTW3
 COPY mqtt_payloads.py /app/PetkitW5BLEMQTT/mqtt_payloads.py
 
