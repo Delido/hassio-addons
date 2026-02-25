@@ -29,13 +29,29 @@ class BLEManager:
 
     async def connect_device(self, address):
         if address in self.available_devices:
-            self.logger.info(f"Connecting to {address}...")
-            client = BleakClient(address, timeout=65.0)
-            await client.connect()
-            self.connected_devices[address] = client
-            self.logger.info(f"Connected to {address}")
-            await self.start_notifications(address, Constants.READ_UUID)
-            return True
+            for attempt in range(1, 4):
+                self.logger.info(f"Connecting to {address}... (attempt {attempt}/3)")
+                client = BleakClient(address, timeout=65.0)
+                try:
+                    await client.connect()
+                    self.connected_devices[address] = client
+                    self.logger.info(f"Connected to {address}")
+                    await self.start_notifications(address, Constants.READ_UUID)
+                    return True
+                except Exception as e:
+                    if "NotPermitted" in str(e) or "Notify acquired" in str(e):
+                        self.logger.warning(f"BlueZ Notify lock not released yet, waiting {attempt * 15}s...")
+                        try:
+                            await client.disconnect()
+                        except Exception:
+                            pass
+                        if address in self.connected_devices:
+                            del self.connected_devices[address]
+                        await asyncio.sleep(attempt * 15)
+                    else:
+                        raise
+            self.logger.error(f"Could not acquire BLE notify after 3 attempts")
+            return False
         else:
             self.logger.error(f"Device {address} not found")
             return False
@@ -110,15 +126,7 @@ class BLEManager:
         if address in self.connected_devices:
             self.logger.info(f"Starting notifications for {characteristic_uuid} on {address}")
             client = self.connected_devices[address]
-            try:
-                await client.start_notify(characteristic_uuid, self._handle_notification_wrapper)
-            except Exception as e:
-                if "NotPermitted" in str(e) or "Notify acquired" in str(e):
-                    self.logger.warning(f"Notify already acquired by BlueZ, waiting for release...")
-                    await asyncio.sleep(5)
-                    await client.start_notify(characteristic_uuid, self._handle_notification_wrapper)
-                else:
-                    raise
+            await client.start_notify(characteristic_uuid, self._handle_notification_wrapper)
             self.logger.info(f"Notifications started for {characteristic_uuid} on {address}")
             return True
         else:
