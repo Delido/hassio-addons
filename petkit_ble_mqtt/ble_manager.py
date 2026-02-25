@@ -45,16 +45,10 @@ class BLEManager:
             self.logger.info(f"Disconnecting from {address}...")
             client = self.connected_devices[address]
 
-            try:
+            if client.is_connected:
                 await client.stop_notify(Constants.READ_UUID)
-            except Exception as e:
-                self.logger.debug(f"Could not stop notify during disconnect: {e}")
 
-            try:
-                await client.disconnect()
-            except Exception as e:
-                self.logger.debug(f"Could not disconnect cleanly: {e}")
-
+            await client.disconnect()
             del self.connected_devices[address]
             self.logger.info(f"Disconnected from {address}")
             return True
@@ -96,22 +90,6 @@ class BLEManager:
                 return False
 
             except Exception as e:
-                if "Service Discovery has not been performed" in str(e):
-                    self.logger.warning(f"Service discovery not ready, retrying write after 2s...")
-                    await asyncio.sleep(2)
-                    try:
-                        await asyncio.wait_for(
-                            client.write_gatt_char(characteristic_uuid, data),
-                            timeout=5.0
-                        )
-                        self.logger.info("Write complete (retry)")
-                        return True
-                    except Exception as retry_e:
-                        self.logger.error(f"Write retry failed: {retry_e}, reconnecting...")
-                        await self.disconnect_device(address)
-                        await asyncio.sleep(2)
-                        await self.connect_device(address)
-                        return False
                 self.logger.error(f"Write failed: {e}, reconnecting...")
                 await self.disconnect_device(address)
                 await asyncio.sleep(2)
@@ -134,6 +112,7 @@ class BLEManager:
             return False
 
     async def _handle_notification_wrapper(self, sender, data):
+        self.logger.debug(f"RAW BLE NOTIFICATION: hex={data.hex()} bytes={list(data)}")
         await self.event_handler.handle_notification(sender, data)
 
     async def stop_notifications(self, address, characteristic_uuid):

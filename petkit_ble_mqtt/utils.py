@@ -263,9 +263,10 @@ class Utils:
     @staticmethod
     def calculate_remaining_filter_time(filter_percentage, time_on, time_off):
         # Guard against division by zero when SMART mode hasn't accumulated runtime yet
+        # Filter lifetime base is 60 days (not 30)
         if not time_on:
-            return math.ceil(filter_percentage * 30.0)
-        return math.ceil(((filter_percentage * 30.0) * (time_on + time_off)) / time_on)
+            return math.ceil(filter_percentage * 60.0)
+        return math.ceil(((filter_percentage * 60.0) * (time_on + time_off)) / time_on)
 
     @staticmethod
     def calculate_values(mode, filter_percentage, smart_time_on, smart_time_off, alias, pump_runtime_today, pump_runtime):
