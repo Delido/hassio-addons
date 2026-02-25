@@ -45,10 +45,16 @@ class BLEManager:
             self.logger.info(f"Disconnecting from {address}...")
             client = self.connected_devices[address]
 
-            if client.is_connected:
+            try:
                 await client.stop_notify(Constants.READ_UUID)
+            except Exception as e:
+                self.logger.debug(f"Could not stop notify during disconnect: {e}")
 
-            await client.disconnect()
+            try:
+                await client.disconnect()
+            except Exception as e:
+                self.logger.debug(f"Could not disconnect cleanly: {e}")
+
             del self.connected_devices[address]
             self.logger.info(f"Disconnected from {address}")
             return True
@@ -104,7 +110,15 @@ class BLEManager:
         if address in self.connected_devices:
             self.logger.info(f"Starting notifications for {characteristic_uuid} on {address}")
             client = self.connected_devices[address]
-            await client.start_notify(characteristic_uuid, self._handle_notification_wrapper)
+            try:
+                await client.start_notify(characteristic_uuid, self._handle_notification_wrapper)
+            except Exception as e:
+                if "NotPermitted" in str(e) or "Notify acquired" in str(e):
+                    self.logger.warning(f"Notify already acquired by BlueZ, waiting for release...")
+                    await asyncio.sleep(5)
+                    await client.start_notify(characteristic_uuid, self._handle_notification_wrapper)
+                else:
+                    raise
             self.logger.info(f"Notifications started for {characteristic_uuid} on {address}")
             return True
         else:
