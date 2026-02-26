@@ -2,6 +2,27 @@
 
 Direkte BLE-Verbindung zu PetKit CTW3/W5 Fontänen. Kein Cloud-Zugriff, kein Relay.
 
+> **Hinweis:** Diese Version wurde primär für die **PetKit Eversweet Max 2 (CTW3_100)** entwickelt und getestet. Andere Geräte (W5 etc.) sollten weiterhin funktionieren, sind aber weniger getestet.
+
+## Getestete Geräte
+
+| Gerät | Modell-ID | Status |
+|---|---|---|
+| PetKit Eversweet Max 2 | CTW3_100 | ✅ Primär unterstützt |
+| PetKit W5 / andere | — | ⚠️ Ungetestet |
+
+## Bekannte Einschränkungen (CTW3)
+
+| Funktion | Status | Hinweis |
+|---|---|---|
+| Filter-%, Filterzeit, Wassermenge | ✅ | |
+| Modus (Normal / Smart Mode) | ✅ | |
+| LED Ein/Aus, Helligkeit | ✅ | |
+| Batterie-Prozent | ✅ | |
+| Pet Drinking | ⚠️ | Sensor vorhanden, Protokoll noch nicht verifiziert |
+| Run (Pumpe an/aus) | ⚠️ | Funktioniert möglicherweise nicht korrekt bei CTW3 |
+| Do Not Disturb | ⚠️ | Zeitsteuerung nicht kompatibel mit CTW3-Protokoll |
+
 ## Funktionsweise
 
 Das Add-on verbindet sich per Bluetooth Low Energy direkt mit der Fontäne und veröffentlicht Status und Steuerungsmöglichkeiten über MQTT. Home Assistant erkennt das Gerät automatisch über MQTT Discovery.
