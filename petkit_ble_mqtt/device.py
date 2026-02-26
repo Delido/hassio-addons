@@ -80,6 +80,7 @@ class Device:
     def status(self):
         return {
             "battery": self._battery,
+            "battery_percentage": self._battery_percentage,
             "dnd_state": self._dnd_state,
             "do_not_disturb_switch": self._do_not_disturb_switch,
             "do_not_disturb_time_off_readable": self._do_not_disturb_time_off_readable,

@@ -41,7 +41,23 @@ class MQTTPayloads:
                 "availability_topic": f"PetkitMQTT/{self.device.mac_readable}/availability",
                 "payload_available": "online",
                 "payload_not_available": "offline",
+                "payload_on": 1,
+                "payload_off": 0,
                 "value_template": "{{ value_json.battery }}",
+                "entity_category": "diagnostic"
+            },
+            "battery_percentage": {
+                "name": "Battery Percentage",
+                "device_class": "battery",
+                "device_type": "sensor",
+                "unique_id": f"{self.device.mac_readable}",
+                "state_topic": f"PetkitMQTT/{self.device.mac_readable}/state",
+                "availability_topic": f"PetkitMQTT/{self.device.mac_readable}/availability",
+                "payload_available": "online",
+                "payload_not_available": "offline",
+                "unit_of_measurement": "%",
+                "state_class": "measurement",
+                "value_template": "{{ value_json.battery_percentage }}",
                 "entity_category": "diagnostic"
             },
             "energy_consumed": {
