@@ -82,10 +82,12 @@ class MQTTCallback:
             
         if key == "state":
             self.logger.info(f"Setting state to {value}.")
+            self.device._running_status = value
             await self.commands.set_device_mode(value, self.device.status["mode"])
-            
+
         if key == "mode":
             self.logger.info(f"Setting mode to {value}.")
+            self.device._mode = value
             await self.commands.set_device_mode(self.device.status["running_status"], value)
             
         if key == "reset_filter":
