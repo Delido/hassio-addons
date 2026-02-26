@@ -34,6 +34,12 @@ COPY device.py /app/PetkitW5BLEMQTT/device.py
 # Patched mqtt_payloads.py: pet_drinking Entity fuer CTW3
 COPY mqtt_payloads.py /app/PetkitW5BLEMQTT/mqtt_payloads.py
 
+# Patched commands.py: Polling-Wait fuer device_initialized vor Check (Race Condition Fix)
+COPY commands.py /app/PetkitW5BLEMQTT/commands.py
+
+# Patched mqtt_callback.py: Optimistic State Update fuer config keys (LED Switch etc.)
+COPY mqtt_callback.py /app/PetkitW5BLEMQTT/mqtt_callback.py
+
 # Patched main.py: konfigurierbares heartbeat_interval
 COPY main.py /app/main.py
 

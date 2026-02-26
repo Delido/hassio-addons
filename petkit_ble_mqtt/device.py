@@ -113,22 +113,41 @@ class Device:
                 
     @property
     def config(self):
-        return {
-            "smart_time_on": self._smart_time_on, 
-            "smart_time_off": self._smart_time_off, 
-            "led_switch": self._led_switch, 
-            "led_brightness": self._led_brightness,
-            "led_on_byte1": self._led_on_byte1, 
-            "led_on_byte2": self._led_on_byte2,
-            "led_off_byte1": self._led_off_byte1,
-            "led_off_byte2": self._led_off_byte2,
-            "do_not_disturb_switch": self._do_not_disturb_switch,                
-            "dnd_on_byte1": self._dnd_on_byte1,
-            "dnd_on_byte2": self._dnd_on_byte2,
-            "dnd_off_byte1": self._dnd_off_byte1,
-            "dnd_off_byte2": self._dnd_off_byte2,
-            "is_locked": self._is_locked
-        }
+        if self.alias == "CTW3":
+            # CTW3 cmd 221 payload mirrors cmd 211 CTW3 format:
+            # [smart_time_on, smart_time_off,
+            #  battery_working_high, battery_working_low,
+            #  battery_sleep_high, battery_sleep_low,
+            #  led_switch, led_brightness, dnd_switch, is_locked]
+            return {
+                "smart_time_on": self._smart_time_on,
+                "smart_time_off": self._smart_time_off,
+                "battery_working_byte1": (self._battery_working_time >> 8) & 0xFF,
+                "battery_working_byte2": self._battery_working_time & 0xFF,
+                "battery_sleep_byte1": (self._battery_sleep_time >> 8) & 0xFF,
+                "battery_sleep_byte2": self._battery_sleep_time & 0xFF,
+                "led_switch": self._led_switch,
+                "led_brightness": self._led_brightness,
+                "do_not_disturb_switch": self._do_not_disturb_switch,
+                "is_locked": self._is_locked,
+            }
+        else:
+            return {
+                "smart_time_on": self._smart_time_on,
+                "smart_time_off": self._smart_time_off,
+                "led_switch": self._led_switch,
+                "led_brightness": self._led_brightness,
+                "led_on_byte1": self._led_on_byte1,
+                "led_on_byte2": self._led_on_byte2,
+                "led_off_byte1": self._led_off_byte1,
+                "led_off_byte2": self._led_off_byte2,
+                "do_not_disturb_switch": self._do_not_disturb_switch,
+                "dnd_on_byte1": self._dnd_on_byte1,
+                "dnd_on_byte2": self._dnd_on_byte2,
+                "dnd_off_byte1": self._dnd_off_byte1,
+                "dnd_off_byte2": self._dnd_off_byte2,
+                "is_locked": self._is_locked,
+            }
         
     @property
     def info(self):
