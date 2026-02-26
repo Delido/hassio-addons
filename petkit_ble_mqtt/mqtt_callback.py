@@ -88,7 +88,10 @@ class MQTTCallback:
         if key == "mode":
             self.logger.info(f"Setting mode to {value}.")
             self.device._mode = value
-            await self.commands.set_device_mode(self.device.status["running_status"], value)
+            # Use power_status, not running_status: in SMART mode running_status is 0
+            # during the pump's off-cycle, which causes the device to stop rather than
+            # switch modes. power_status is 1 whenever the device is powered on.
+            await self.commands.set_device_mode(self.device.status["power_status"], value)
             
         if key == "reset_filter":
             self.logger.info(f"Resetting filter.")
