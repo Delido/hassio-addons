@@ -499,6 +499,30 @@ class MQTTPayloads:
                 "payload_off": 0,
                 "value_template": "{{ value_json.pet_drinking }}"
             },
+            "pet_drinking_count": {
+                "name": "Pet Drinking Count",
+                "device_type": "sensor",
+                "icon": "mdi:counter",
+                "unique_id": f"{self.device.mac_readable}",
+                "state_topic": f"PetkitMQTT/{self.device.mac_readable}/state",
+                "availability_topic": f"PetkitMQTT/{self.device.mac_readable}/availability",
+                "payload_available": "online",
+                "payload_not_available": "offline",
+                "state_class": "total_increasing",
+                "value_template": "{{ value_json.pet_drinking_count }}"
+            },
+            "last_pet_drinking": {
+                "name": "Last Pet Drinking",
+                "device_class": "timestamp",
+                "device_type": "sensor",
+                "icon": "mdi:clock-outline",
+                "unique_id": f"{self.device.mac_readable}",
+                "state_topic": f"PetkitMQTT/{self.device.mac_readable}/state",
+                "availability_topic": f"PetkitMQTT/{self.device.mac_readable}/availability",
+                "payload_available": "online",
+                "payload_not_available": "offline",
+                "value_template": "{{ value_json.last_pet_drinking }}"
+            },
             #"filter_reset": {
             #    "name": "Reset filter",
             #    "device_type": "button",

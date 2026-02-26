@@ -40,6 +40,8 @@ class Device:
         self._mode = 0
         self._detect_status = 0
         self._pet_drinking = 0
+        self._pet_drinking_count = 0
+        self._last_pet_drinking = None
         self._electric_status = 0
         self._dnd_state = 0
         self._warning_breakdown = 0
@@ -104,6 +106,8 @@ class Device:
             "rssi": self._rssi,
             "running_status": self._running_status,
             "pet_drinking": self._pet_drinking,
+            "pet_drinking_count": self._pet_drinking_count,
+            "last_pet_drinking": self._last_pet_drinking,
             "smart_time_off": self._smart_time_off,
             "smart_time_on": self._smart_time_on,
             "voltage": self._voltage,

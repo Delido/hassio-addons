@@ -28,11 +28,14 @@ COPY utils.py /app/PetkitW5BLEMQTT/utils.py
 # Patched parsers.py: CTW3-Branch in device_status() - korrekte Byte-Offsets + pet_drinking
 COPY parsers.py /app/PetkitW5BLEMQTT/parsers.py
 
-# Patched device.py: _pet_drinking Attribut + Status-Key Whitelist
+# Patched device.py: _pet_drinking_count + _last_pet_drinking Attribute + CTW3 config
 COPY device.py /app/PetkitW5BLEMQTT/device.py
 
-# Patched mqtt_payloads.py: pet_drinking Entity fuer CTW3
+# Patched mqtt_payloads.py: pet_drinking_count + last_pet_drinking Entities
 COPY mqtt_payloads.py /app/PetkitW5BLEMQTT/mqtt_payloads.py
+
+# Patched event_handlers.py: 0->1 Transition fuer pet_drinking + Count/Timestamp
+COPY event_handlers.py /app/PetkitW5BLEMQTT/event_handlers.py
 
 # Patched commands.py: Polling-Wait fuer device_initialized vor Check (Race Condition Fix)
 COPY commands.py /app/PetkitW5BLEMQTT/commands.py
