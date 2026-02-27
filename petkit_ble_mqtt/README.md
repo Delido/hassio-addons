@@ -26,6 +26,13 @@ Direkte BLE-Verbindung zu PetKit CTW3/W5 Fontänen. Kein Cloud-Zugriff, kein Rel
 | Do Not Disturb | ✅ | |
 | Run (Pumpe an/aus) | ⚠️ | Funktioniert möglicherweise nicht korrekt bei CTW3 |
 
+## Bekannte Bugs
+
+| Bug | Beschreibung | Workaround |
+| --- | --- | --- |
+| Erster Verbindungsversuch schlägt fehl | Nach einem Neustart schlägt der erste BLE-Verbindungsversuch mit `failed to discover services, device disconnected` fehl. BlueZ ist zu diesem Zeitpunkt noch nicht vollständig bereit. Das Add-on erkennt den Fehler, wartet 30 s und verbindet sich beim zweiten Versuch erfolgreich. | Keiner nötig — selbstheilend. |
+| Pet Drinking Count reset nach Neustart | Der Trinksitzungs-Zähler wird nur im RAM gehalten und startet nach jedem Add-on- oder HA-Neustart bei 0. Langzeitstatistiken sind daher nur mit HA-internen Mitteln (z.B. `utility_meter`) möglich. | In HA einen `utility_meter` auf die Sensor-Entity anlegen, der nicht zurückgesetzt wird. |
+
 ## Funktionsweise
 
 Das Add-on verbindet sich per Bluetooth Low Energy direkt mit der Fontäne und veröffentlicht Status und Steuerungsmöglichkeiten über MQTT. Home Assistant erkennt das Gerät automatisch über MQTT Discovery.
