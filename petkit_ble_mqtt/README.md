@@ -7,21 +7,24 @@ Direkte BLE-Verbindung zu PetKit CTW3/W5 Fontänen. Kein Cloud-Zugriff, kein Rel
 ## Getestete Geräte
 
 | Gerät | Modell-ID | Status |
-|---|---|---|
+| --- | --- | --- |
 | PetKit Eversweet Max 2 | CTW3_100 | ✅ Primär unterstützt |
 | PetKit W5 / andere | — | ⚠️ Ungetestet |
 
 ## Bekannte Einschränkungen (CTW3)
 
 | Funktion | Status | Hinweis |
-|---|---|---|
+| --- | --- | --- |
 | Filter-%, Filterzeit, Wassermenge | ✅ | |
 | Modus (Normal / Smart Mode) | ✅ | |
 | LED Ein/Aus, Helligkeit | ✅ | |
 | Batterie-Prozent | ✅ | |
-| Pet Drinking | ⚠️ | Sensor vorhanden, Protokoll noch nicht verifiziert |
+| Pet Drinking (Echtzeit-Sensor) | ✅ | |
+| Pet Drinking Count (Sitzungen/Tag) | ✅ | Zählt Trinksitzungen, reset bei Add-on-Neustart |
+| Letzte Trinksitzung (Timestamp) | ✅ | |
+| Trinksitzung Dauer | ✅ | Genauigkeit ~±60s (abhängig vom Poll-Intervall) |
+| Do Not Disturb | ✅ | |
 | Run (Pumpe an/aus) | ⚠️ | Funktioniert möglicherweise nicht korrekt bei CTW3 |
-| Do Not Disturb | ⚠️ | Zeitsteuerung nicht kompatibel mit CTW3-Protokoll |
 
 ## Funktionsweise
 
@@ -30,7 +33,7 @@ Das Add-on verbindet sich per Bluetooth Low Energy direkt mit der Fontäne und v
 ## Konfiguration
 
 | Option | Beschreibung | Standard |
-|---|---|---|
+| --- | --- | --- |
 | `fountain_mac` | BLE MAC-Adresse der Fontäne | `A4:C1:38:52:34:98` |
 | `mqtt_broker` | Hostname des MQTT-Brokers | `core-mosquitto` |
 | `mqtt_port` | Port des MQTT-Brokers | `1883` |
