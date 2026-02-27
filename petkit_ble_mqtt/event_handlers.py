@@ -56,12 +56,24 @@ class EventHandlers:
                 if cmd == 230:
                     new_pet_drinking = self.device._pet_drinking
                     if prev_pet_drinking == 0 and new_pet_drinking != 0:
-                        self.device._pet_drinking_count += 1
-                        self.device._last_pet_drinking = datetime.now(timezone.utc).isoformat()
-                        self.logger.info(
-                            f"Pet drinking event detected (count={self.device._pet_drinking_count},"
-                            f" last={self.device._last_pet_drinking})"
-                        )
+                        now = datetime.now(timezone.utc)
+                        last = self.device._last_pet_drinking
+                        # Cooldown: only count as a new session if the last event was
+                        # more than 5 minutes ago. This prevents multiple counts from
+                        # signal fluctuations (0→1→0→1) within a single drinking session.
+                        cooldown_seconds = 300
+                        if last is None or (now - datetime.fromisoformat(last)).total_seconds() > cooldown_seconds:
+                            self.device._pet_drinking_count += 1
+                            self.device._last_pet_drinking = now.isoformat()
+                            self.logger.info(
+                                f"Pet drinking session started (count={self.device._pet_drinking_count},"
+                                f" last={self.device._last_pet_drinking})"
+                            )
+                        else:
+                            self.logger.debug(
+                                f"Pet drinking: within cooldown window ({cooldown_seconds}s),"
+                                f" not counting as new session"
+                            )
 
         if self.callback and cmd in self.forward_messages:
             self.callback(self.device.mac_readable, self.device.status)
