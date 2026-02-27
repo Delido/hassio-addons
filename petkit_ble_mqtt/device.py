@@ -42,6 +42,8 @@ class Device:
         self._pet_drinking = 0
         self._pet_drinking_count = 0
         self._last_pet_drinking = None
+        self._drinking_session_start = None
+        self._last_pet_drinking_duration = 0
         self._electric_status = 0
         self._dnd_state = 0
         self._warning_breakdown = 0
@@ -108,6 +110,7 @@ class Device:
             "pet_drinking": self._pet_drinking,
             "pet_drinking_count": self._pet_drinking_count,
             "last_pet_drinking": self._last_pet_drinking,
+            "last_pet_drinking_duration": self._last_pet_drinking_duration,
             "smart_time_off": self._smart_time_off,
             "smart_time_on": self._smart_time_on,
             "voltage": self._voltage,

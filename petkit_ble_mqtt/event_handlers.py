@@ -55,24 +55,36 @@ class EventHandlers:
 
                 if cmd == 230:
                     new_pet_drinking = self.device._pet_drinking
+                    now = datetime.now(timezone.utc)
+                    # Cooldown window: signal fluctuations within this period
+                    # are treated as one continuous session.
+                    cooldown_seconds = 300
+
                     if prev_pet_drinking == 0 and new_pet_drinking != 0:
-                        now = datetime.now(timezone.utc)
+                        # 0→1: potential new session start
                         last = self.device._last_pet_drinking
-                        # Cooldown: only count as a new session if the last event was
-                        # more than 5 minutes ago. This prevents multiple counts from
-                        # signal fluctuations (0→1→0→1) within a single drinking session.
-                        cooldown_seconds = 300
                         if last is None or (now - datetime.fromisoformat(last)).total_seconds() > cooldown_seconds:
+                            # Outside cooldown → genuinely new session
                             self.device._pet_drinking_count += 1
                             self.device._last_pet_drinking = now.isoformat()
+                            self.device._drinking_session_start = now
                             self.logger.info(
                                 f"Pet drinking session started (count={self.device._pet_drinking_count},"
                                 f" last={self.device._last_pet_drinking})"
                             )
                         else:
+                            # Within cooldown → same session, signal just came back
                             self.logger.debug(
-                                f"Pet drinking: within cooldown window ({cooldown_seconds}s),"
-                                f" not counting as new session"
+                                f"Pet drinking: 0→1 within cooldown window, same session"
+                            )
+
+                    elif prev_pet_drinking != 0 and new_pet_drinking == 0:
+                        # 1→0: drinking stopped, update session duration if we have a start time
+                        if self.device._drinking_session_start is not None:
+                            duration = int((now - self.device._drinking_session_start).total_seconds())
+                            self.device._last_pet_drinking_duration = duration
+                            self.logger.info(
+                                f"Pet drinking session ended (duration={duration}s)"
                             )
 
         if self.callback and cmd in self.forward_messages:
