@@ -80,6 +80,22 @@ class Commands:
         await self.get_device_state()
         await asyncio.sleep(0.75)
         await self.get_device_config()
+        await asyncio.sleep(0.75)
+        await self.get_last_session()
+
+    async def get_last_session(self):
+        cmd = 212                           # CMD 212: last pet drinking session duration
+        type = 1                            # Type is 1 for sending
+        seq = self.sequence
+        data = []
+
+        bytes = Utils.build_command(seq, cmd, type, data)
+        await self.ble_manager.message_producer(bytes)
+
+        self.increment_sequence()
+
+        self.logger.info(f"Queued command: {cmd}")
+        return
 
     async def get_battery(self):
         cmd = 66                            # Command for getting device details

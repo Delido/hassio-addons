@@ -17,6 +17,7 @@ class EventHandlers:
             200: Parsers.device_firmware,
             210: Parsers.device_state,
             211: Parsers.device_configuration,
+            212: Parsers.device_last_session,
             213: Parsers.device_identifiers,
             230: Parsers.device_status,
         }
@@ -47,7 +48,7 @@ class EventHandlers:
                 self.device.info = data
 
             # Update status — for cmd 230 detect pet_drinking 0→nonzero transition
-            if cmd in [66, 210, 211, 230]:
+            if cmd in [66, 210, 211, 212, 230]:
                 if cmd == 230:
                     prev_pet_drinking = self.device._pet_drinking
 

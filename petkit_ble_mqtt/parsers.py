@@ -258,3 +258,13 @@ class Parsers:
                 "purified_water_today": purified_water_today,
                 "energy_consumed": energy_consumed,
             }
+
+    # CMD 212: last pet drinking session duration
+    # byte[0] = status (0x01 = OK)
+    # byte[4] = duration in ~6-second units (confirmed via BLE sniff:
+    #           6 units × 6s = 36s ≈ 35s measured session)
+    @staticmethod
+    def device_last_session(data, alias):
+        if len(data) < 5 or data[0] != 1:
+            return {}
+        return {"last_pet_drinking_duration": data[4] * 6}
