@@ -41,6 +41,7 @@ class Device:
         self._detect_status = 0
         self._pet_drinking = 0
         self._pet_drinking_count = 0
+        self._pet_drinking_count_date = None  # date of current day's count (UTC)
         self._last_pet_drinking = None
         self._drinking_session_start = None
         self._last_pet_drinking_duration = 0

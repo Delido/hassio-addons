@@ -57,8 +57,19 @@ class EventHandlers:
                 if cmd == 230:
                     new_pet_drinking = self.device._pet_drinking
                     now = datetime.now(timezone.utc)
+                    today = now.date()
                     # Minimum duration: state must be 1 for at least this long to count as a session
                     min_session_seconds = 10
+
+                    # Reset count at the start of each new UTC day
+                    if self.device._pet_drinking_count_date != today:
+                        if self.device._pet_drinking_count_date is not None:
+                            self.logger.info(
+                                f"New day ({today}): resetting pet_drinking_count "
+                                f"(was {self.device._pet_drinking_count})"
+                            )
+                        self.device._pet_drinking_count = 0
+                        self.device._pet_drinking_count_date = today
 
                     if prev_pet_drinking == 0 and new_pet_drinking != 0:
                         # 0→1: start tracking, but don't count yet
