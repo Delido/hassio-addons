@@ -87,10 +87,11 @@ else
     /usr/local/bin/php /var/www/html/endpoints/cronjobs/createdatabase.php 2>&1 || true
 fi
 
-# Run initial cron jobs
+# Run initial cron jobs (with timeout to prevent s6 startup timeout)
 echo "[wallos-init] Running initial cron jobs..."
-/usr/local/bin/php /var/www/html/endpoints/cronjobs/updatenextpayment.php 2>/dev/null || true
-/usr/local/bin/php /var/www/html/endpoints/cronjobs/updateexchange.php 2>/dev/null || true
-/usr/local/bin/php /var/www/html/endpoints/cronjobs/checkforupdates.php 2>/dev/null || true
+timeout 20 /usr/local/bin/php /var/www/html/endpoints/cronjobs/updatenextpayment.php 2>/dev/null || true
+timeout 20 /usr/local/bin/php /var/www/html/endpoints/cronjobs/updateexchange.php 2>/dev/null || true
+# checkforupdates.php skipped at startup — it makes outbound network requests that can hang
+# and cause s6 init timeout; crond will run it on schedule instead
 
 echo "[wallos-init] Wallos initialization complete"
