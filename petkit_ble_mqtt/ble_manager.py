@@ -34,11 +34,12 @@ class BLEManager:
                 client = BleakClient(address, timeout=65.0)
                 try:
                     await client.connect()
-                    # Explicitly wait for full GATT service discovery so all
-                    # characteristics (including WRITE_UUID) are resolved before
-                    # any write_gatt_char call — avoids "Service Discovery has
-                    # not been performed yet" on cmd 200.
-                    await client.get_services()
+                    # Short wait for BlueZ to finish propagating GATT service
+                    # discovery internally — avoids "Service Discovery has not
+                    # been performed yet" on cmd 200 (bleak calls get_services()
+                    # inside connect() in modern versions, but BlueZ may not have
+                    # resolved all characteristics yet when connect() returns).
+                    await asyncio.sleep(1.5)
                     self.connected_devices[address] = client
                     self.logger.info(f"Connected to {address}")
                     await self.start_notifications(address, Constants.READ_UUID)
