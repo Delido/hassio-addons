@@ -34,6 +34,11 @@ class BLEManager:
                 client = BleakClient(address, timeout=65.0)
                 try:
                     await client.connect()
+                    # Explicitly wait for full GATT service discovery so all
+                    # characteristics (including WRITE_UUID) are resolved before
+                    # any write_gatt_char call — avoids "Service Discovery has
+                    # not been performed yet" on cmd 200.
+                    await client.get_services()
                     self.connected_devices[address] = client
                     self.logger.info(f"Connected to {address}")
                     await self.start_notifications(address, Constants.READ_UUID)
@@ -104,17 +109,13 @@ class BLEManager:
                 return True
 
             except asyncio.TimeoutError:
-                self.logger.error(f"Write timeout on {address}, reconnecting...")
+                self.logger.error(f"Write timeout on {address}, disconnecting...")
                 await self.disconnect_device(address)
-                await asyncio.sleep(1)
-                await self.connect_device(address)
                 return False
 
             except Exception as e:
-                self.logger.error(f"Write failed: {e}, reconnecting...")
+                self.logger.error(f"Write failed: {e}, disconnecting...")
                 await self.disconnect_device(address)
-                await asyncio.sleep(2)
-                await self.connect_device(address)
                 return False
 
         else:
@@ -149,6 +150,9 @@ class BLEManager:
 
     async def heartbeat(self, interval):
         while True:
+            if not self.connected_devices:
+                await asyncio.sleep(5)
+                continue
             for address in list(self.connected_devices.keys()):
                 try:
                     await self.commands.get_battery()  # To update voltage
@@ -157,20 +161,31 @@ class BLEManager:
                     if self.queue.qsize() > 10:
                         raise Exception("Queue size over threshold. Disconnecting...")
 
-                    await asyncio.sleep(interval)
                 except Exception as e:
                     self.logger.error(f"Error during heartbeat: {e}")
-                    self.logger.info(f"Attempting to reconnect to {address}")
+                    self.logger.info(f"Disconnecting {address} — message_consumer will reconnect")
                     await self.disconnect_device(address)
-                    await asyncio.sleep(5)
-                    await self.connect_device(address)
+            await asyncio.sleep(interval)
+
+    def _drain_queue(self):
+        drained = 0
+        while not self.queue.empty():
+            try:
+                self.queue.get_nowait()
+                self.queue.task_done()
+                drained += 1
+            except asyncio.QueueEmpty:
+                break
+        if drained:
+            self.logger.info(f"Drained {drained} stale commands from queue after disconnect")
 
     async def message_consumer(self, address, characteristic_uuid):
         while True:
             if not self.connected_devices.get(address):
-                self.logger.warning(f"Device {address} not connected. Attempting to reconnect...")
+                self.logger.warning(f"Device {address} not connected. Draining queue and reconnecting...")
+                self._drain_queue()
+                await asyncio.sleep(2)
                 await self.connect_device(address)
-                await asyncio.sleep(1)
                 continue
 
             message = await self.queue.get()
