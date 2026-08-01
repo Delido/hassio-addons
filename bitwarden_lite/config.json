@@ -1,6 +1,6 @@
 {
   "name": "Bitwarden Lite",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "slug": "bitwarden_lite",
   "description": "Self-hosted Bitwarden password manager (Lite / unified deployment)",
   "url": "https://github.com/Delido/hassio-addons/blob/main/bitwarden_lite/README.md",
@@ -51,6 +51,16 @@
       "scim": false,
       "sso": false
     },
+    "smtp": {
+      "host": "",
+      "port": 587,
+      "ssl": false,
+      "starttls": true,
+      "username": "",
+      "password": "",
+      "from": "",
+      "trust_server": false
+    },
     "disable_user_registration": false
   },
   "schema": {
@@ -64,10 +74,10 @@
     "database": {
       "provider": "list(sqlite|mysql|postgresql|sqlserver)",
       "server": "str?",
-      "port": "port?",
+      "port": "int?",
       "database": "str?",
       "username": "str?",
-      "password": "password?"
+      "password": "str?"
     },
     "ssl": {
       "enabled": "bool?",
@@ -83,11 +93,11 @@
     },
     "smtp": {
       "host": "str?",
-      "port": "port?",
+      "port": "int?",
       "ssl": "bool?",
       "starttls": "bool?",
       "username": "str?",
-      "password": "password?",
+      "password": "str?",
       "from": "str?",
       "trust_server": "bool?"
     }
