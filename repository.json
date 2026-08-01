@@ -17,6 +17,11 @@
       "slug": "petkit_ble_mqtt",
       "name": "PetKit BLE MQTT",
       "description": "Direkte BLE-Verbindung zu PetKit CTW3/W5 Fontaene via MQTT"
+    },
+    {
+      "slug": "bitwarden_lite",
+      "name": "Bitwarden Lite",
+      "description": "Self-hosted Bitwarden password manager (Lite / unified deployment)"
     }
   ]
 }

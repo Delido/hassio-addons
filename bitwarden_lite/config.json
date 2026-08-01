@@ -1,0 +1,96 @@
+{
+  "name": "Bitwarden Lite",
+  "version": "1.0.0",
+  "slug": "bitwarden_lite",
+  "description": "Self-hosted Bitwarden password manager (Lite / unified deployment)",
+  "url": "https://github.com/Delido/hassio-addons/blob/main/bitwarden_lite/README.md",
+  "startup": "application",
+  "boot": "auto",
+  "webui": "http://[HOST]:[PORT:8080]",
+  "arch": [
+    "amd64",
+    "aarch64",
+    "armv7"
+  ],
+  "hassio_api": false,
+  "hassio_role": "default",
+  "homeassistant_api": false,
+  "host_network": false,
+  "init": false,
+  "privileged": [],
+  "timeout": 120,
+  "stage": "experimental",
+  "map": [
+    "ssl:ro"
+  ],
+  "ports": {
+    "8080/tcp": 8080,
+    "8443/tcp": null
+  },
+  "ports_description": {
+    "8080/tcp": "Bitwarden HTTP (put a TLS reverse proxy in front of this)",
+    "8443/tcp": "Bitwarden HTTPS (only used when ssl.enabled is true)"
+  },
+  "options": {
+    "domain": "",
+    "installation_id": "",
+    "installation_key": "",
+    "timezone": "Europe/Berlin",
+    "database": {
+      "provider": "sqlite"
+    },
+    "ssl": {
+      "enabled": false,
+      "certfile": "fullchain.pem",
+      "keyfile": "privkey.pem"
+    },
+    "services": {
+      "icons": true,
+      "notifications": true,
+      "events": false,
+      "scim": false,
+      "sso": false
+    },
+    "disable_user_registration": false
+  },
+  "schema": {
+    "domain": "str",
+    "installation_id": "str",
+    "installation_key": "str",
+    "timezone": "str?",
+    "admin_emails": "str?",
+    "disable_user_registration": "bool?",
+    "hibp_api_key": "password?",
+    "database": {
+      "provider": "list(sqlite|mysql|postgresql|sqlserver)",
+      "server": "str?",
+      "port": "port?",
+      "database": "str?",
+      "username": "str?",
+      "password": "password?"
+    },
+    "ssl": {
+      "enabled": "bool?",
+      "certfile": "str?",
+      "keyfile": "str?"
+    },
+    "services": {
+      "icons": "bool?",
+      "notifications": "bool?",
+      "events": "bool?",
+      "scim": "bool?",
+      "sso": "bool?"
+    },
+    "smtp": {
+      "host": "str?",
+      "port": "port?",
+      "ssl": "bool?",
+      "starttls": "bool?",
+      "username": "str?",
+      "password": "password?",
+      "from": "str?",
+      "trust_server": "bool?"
+    }
+  },
+  "watchdog": "http://[HOST]:[PORT:8080]/alive"
+}
