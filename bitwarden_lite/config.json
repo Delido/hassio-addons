@@ -1,6 +1,6 @@
 {
   "name": "Bitwarden Lite",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "slug": "bitwarden_lite",
   "description": "Self-hosted Bitwarden password manager (Lite / unified deployment)",
   "url": "https://github.com/Delido/hassio-addons/blob/main/bitwarden_lite/README.md",
@@ -17,7 +17,9 @@
   "homeassistant_api": false,
   "host_network": false,
   "init": false,
-  "privileged": [],
+  "privileged": [
+    "SYS_ADMIN"
+  ],
   "timeout": 120,
   "stage": "experimental",
   "map": [

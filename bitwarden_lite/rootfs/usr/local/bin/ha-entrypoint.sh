@@ -34,20 +34,45 @@ export_if_set() {
 }
 
 # --- persistent storage -----------------------------------------------------
-# The image hardcodes /etc/bitwarden in dozens of globalSettings defaults, so we
-# keep that path but make it a symlink into /data, which HA backs up.
-mkdir -p "${BW_DATA}"
-if [ -d /etc/bitwarden ] && [ ! -L /etc/bitwarden ]; then
-    # First start: migrate the directory skeleton created at image build time.
-    cp -a /etc/bitwarden/. "${BW_DATA}/" 2>/dev/null || true
-    rm -rf /etc/bitwarden
-fi
-ln -sfn "${BW_DATA}" /etc/bitwarden
+# Everything Bitwarden persists has to live under /data, which is the only path
+# Home Assistant backs up. The upstream image declares VOLUME ["/etc/bitwarden"],
+# so that path is an active mount point: it can be neither removed nor replaced
+# by a symlink ("Resource busy").
+#
+# Instead we bind-mount /data/bitwarden over it. The paths the image exposes as
+# environment variables are also redirected, so that even without CAP_SYS_ADMIN
+# (i.e. when the bind mount is not permitted) the database, attachments and
+# data-protection keys still land in /data.
 mkdir -p \
     "${BW_DATA}/attachments/send" \
     "${BW_DATA}/data-protection" \
     "${BW_DATA}/licenses" \
     "${BW_DATA}/logs"
+
+if mount --bind "${BW_DATA}" /etc/bitwarden 2>/dev/null; then
+    BW_BIND_MOUNTED=1
+    log "Data directory: ${BW_DATA} (bind-mounted to /etc/bitwarden)"
+else
+    BW_BIND_MOUNTED=0
+    log "Data directory: ${BW_DATA} (bind mount unavailable, redirecting paths)"
+fi
+
+# Redirect the overridable paths. Harmless when the bind mount succeeded, since
+# both paths then refer to the same directory.
+export BW_DB_FILE="${BW_DATA}/vault.db"
+export globalSettings__dataProtection__directory="${BW_DATA}/data-protection"
+export globalSettings__attachment__baseDirectory="${BW_DATA}/attachments"
+export globalSettings__send__baseDirectory="${BW_DATA}/attachments/send"
+export globalSettings__licenseDirectory="${BW_DATA}/licenses"
+
+# identity.pfx signs the authentication tokens and is hardcoded to
+# /etc/bitwarden in the upstream entrypoint - it cannot be redirected. Losing it
+# locks every user out, so when the bind mount is unavailable we seed it from
+# /data before the entrypoint runs and copy it back afterwards.
+if [ "${BW_BIND_MOUNTED}" = "0" ] && [ -f "${BW_DATA}/identity.pfx" ]; then
+    cp -f "${BW_DATA}/identity.pfx" /etc/bitwarden/identity.pfx
+    log "Restored identity.pfx from ${BW_DATA}"
+fi
 
 # --- timezone ---------------------------------------------------------------
 TIMEZONE=$(opt '.timezone' 'Europe/Berlin')
@@ -174,6 +199,26 @@ fi
 # about, so let the upstream entrypoint keep its own root-owned defaults.
 export PUID="${PUID:-0}"
 export PGID="${PGID:-0}"
+
+# Without the bind mount, identity.pfx is generated inside the anonymous volume
+# and would be lost on the next add-on update. Watch for it in the background
+# and copy it into /data once the entrypoint has created it.
+if [ "${BW_BIND_MOUNTED}" = "0" ]; then
+    (
+        i=0
+        while [ "${i}" -lt 60 ]; do
+            if [ -f /etc/bitwarden/identity.pfx ]; then
+                if ! cmp -s /etc/bitwarden/identity.pfx "${BW_DATA}/identity.pfx" 2>/dev/null; then
+                    cp -f /etc/bitwarden/identity.pfx "${BW_DATA}/identity.pfx"
+                    log "Saved identity.pfx to ${BW_DATA}"
+                fi
+                break
+            fi
+            i=$((i + 1))
+            sleep 1
+        done
+    ) &
+fi
 
 log "Starting Bitwarden Lite..."
 exec /entrypoint.sh
