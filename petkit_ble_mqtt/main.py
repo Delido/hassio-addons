@@ -39,62 +39,97 @@ class Manager:
 
         self.logger.info(f"Connecting...")
 
-        if await self.ble_manager.connect_device(address):
-            self.logger.info(f"Connected.")
+        if not await self.ble_manager.connect_device(address):
+            self.logger.error(f"Initial connection to {address} failed — exiting for supervisor restart")
+            return
 
-            # Start the producer and consumer tasks
-            consumer = asyncio.create_task(self.ble_manager.message_consumer(address, Constants.WRITE_UUID))
+        self.logger.info(f"Connected.")
 
-            # Init the device
-            self.commands.init_device_data()
+        # Start the producer and consumer tasks
+        consumer = asyncio.create_task(self.ble_manager.message_consumer(address, Constants.WRITE_UUID))
+        heartbeat = None
+
+        # Init the device
+        self.commands.init_device_data()
+
+        try:
+            # Connect to the device. Bounded so a device that stops answering
+            # mid-handshake cannot wedge startup indefinitely.
+            await asyncio.wait_for(self.commands.init_device_connection(), timeout=120.0)
+
+            # Initialize the heartbeat with configurable interval
+            heartbeat = asyncio.create_task(self.ble_manager.heartbeat(self.heartbeat_interval))
+
+            if self.mqtt_client and self.mqtt_client.connected:
+                # Setup the MQTT payloads
+                self.mqtt_payloads = MQTTPayloads(device=self.device)
+
+                # Tell MQTTClient which identifier to use for availability
+                self.mqtt_client.set_identifier(self.device.mac_readable)
+
+                self.logger.info(f"Sending payloads...")
+
+                # Setup the MQTT callback function
+                self.mqtt_callback = MQTTCallback(device=self.device, commands=self.commands)
+
+                # Generate discovery payloads
+                discovery_payloads = self.mqtt_payloads.discovery()
+
+                # Post discovery payloads
+                self.mqtt_client.publish_discovery(discovery_payloads)
+
+                # Subscribe to the command topic
+                self.mqtt_client.subscribe(f"PetkitMQTT/{self.device.mac_readable}/command")
+
+                # Setup the callback function for handling messages
+                self.mqtt_client.set_on_message(self.mqtt_callback.delegate)
+
+                # Post online to availability topic
+                self.mqtt_client.publish_availability(self.device.mac_readable, "online")
+
+            # Watchdog: if either background task dies (unhandled exception or
+            # cancellation) the add-on would otherwise sit in this loop forever
+            # with no BLE traffic and no log output — looking alive to the
+            # supervisor while doing nothing. Exiting lets run.sh restart us.
+            while True:
+                for name, task in (("message_consumer", consumer),
+                                   ("heartbeat", heartbeat)):
+                    if task is not None and task.done():
+                        exc = task.exception() if not task.cancelled() else None
+                        if exc is not None:
+                            self.logger.error(f"Task {name} died: {exc!r}")
+                        else:
+                            self.logger.error(f"Task {name} exited unexpectedly")
+                        raise RuntimeError(f"Background task {name} is no longer running")
+                await asyncio.sleep(1)
+
+        except KeyboardInterrupt:
+            # Handling cleanup on keyboard interrupt
+            self.logger.info("Interrupted, cleaning up...")
+        finally:
+            # Cancel background tasks before tearing down the connection — a
+            # still-running message_consumer would otherwise immediately
+            # reconnect the device we are about to disconnect.
+            for task in (consumer, heartbeat):
+                if task is not None and not task.done():
+                    task.cancel()
+            for task in (consumer, heartbeat):
+                if task is not None:
+                    try:
+                        await task
+                    except asyncio.CancelledError:
+                        pass
+                    except Exception as e:
+                        self.logger.debug(f"Task raised during cleanup (ignored): {e}")
 
             try:
-                # Connect to the device
-                await self.commands.init_device_connection()
-
-                # Initialize the heartbeat with configurable interval
-                heartbeat = asyncio.create_task(self.ble_manager.heartbeat(self.heartbeat_interval))
-
-                if self.mqtt_client and self.mqtt_client.connected:
-                    # Setup the MQTT payloads
-                    self.mqtt_payloads = MQTTPayloads(device=self.device)
-
-                    # Tell MQTTClient which identifier to use for availability
-                    self.mqtt_client.set_identifier(self.device.mac_readable)
-
-                    self.logger.info(f"Sending payloads...")
-
-                    # Setup the MQTT callback function
-                    self.mqtt_callback = MQTTCallback(device=self.device, commands=self.commands)
-
-                    # Generate discovery payloads
-                    discovery_payloads = self.mqtt_payloads.discovery()
-
-                    # Post discovery payloads
-                    self.mqtt_client.publish_discovery(discovery_payloads)
-
-                    # Subscribe to the command topic
-                    self.mqtt_client.subscribe(f"PetkitMQTT/{self.device.mac_readable}/command")
-
-                    # Setup the callback function for handling messages
-                    self.mqtt_client.set_on_message(self.mqtt_callback.delegate)
-
-                    # Post online to availability topic
-                    self.mqtt_client.publish_availability(self.device.mac_readable, "online")
-                while True:
-                    await asyncio.sleep(1)  # Example interval for ad-hoc message sending
-
-            except KeyboardInterrupt:
-                # Handling cleanup on keyboard interrupt
-                self.logger.info("Interrupted, cleaning up...")
-
-                # Wait for queue to be empty and disconnect the device
-                await self.ble_manager.queue.join()
                 await self.ble_manager.disconnect_device(address)
-            finally:
-                if self.mqtt_client:
-                    self.mqtt_client.publish_availability(self.device.mac_readable, "offline")
-                    self.mqtt_client.disconnect()
+            except Exception as e:
+                self.logger.debug(f"Disconnect during cleanup failed (ignored): {e}")
+
+            if self.mqtt_client:
+                self.mqtt_client.publish_availability(self.device.mac_readable, "offline")
+                self.mqtt_client.disconnect()
 
     async def restart_run(self, address=None):
         if address is None:

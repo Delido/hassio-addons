@@ -19,7 +19,8 @@ RUN git clone https://github.com/slespersen/PetkitW5BLEMQTT.git /app
 # Make the library importable
 RUN ln -s /app/PetkitW5BLEMQTT /usr/local/lib/python3.11/site-packages/PetkitW5BLEMQTT
 
-# Patched ble_manager: None-check fuer dev.name + reconnect bei Write-Fehler
+# Patched ble_manager: None-check fuer dev.name, Live-Link-Erkennung
+# (is_connected), Disconnect-Callback, exponentielles Reconnect-Backoff
 COPY ble_manager.py /app/PetkitW5BLEMQTT/ble_manager.py
 
 # Patched utils.py: Division-by-zero Guard fuer SMART-Modus (time_on=0)
@@ -43,7 +44,7 @@ COPY commands.py /app/PetkitW5BLEMQTT/commands.py
 # Patched mqtt_callback.py: Optimistic State Update fuer config keys (LED Switch etc.)
 COPY mqtt_callback.py /app/PetkitW5BLEMQTT/mqtt_callback.py
 
-# Patched main.py: konfigurierbares heartbeat_interval
+# Patched main.py: konfigurierbares heartbeat_interval + Task-Watchdog
 COPY main.py /app/main.py
 
 COPY run.sh /run.sh

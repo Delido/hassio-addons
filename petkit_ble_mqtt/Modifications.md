@@ -31,6 +31,57 @@ If `write_characteristic()` raises an exception (e.g. because the device
 dropped the connection mid-session), the manager now disconnects, removes
 the cached connection, and reconnects before retrying the write.
 
+### 5. Detect silently dropped links (`is_connected()`)
+`message_consumer()` decided whether to reconnect by testing
+`self.connected_devices.get(address)` — a dict entry that only our own code
+adds and removes. BlueZ can tear down the link without bleak raising
+anything, leaving the entry in place while the transport is dead.
+
+The result was an endless loop, visible in the logs as a 30 s cycle:
+reconnect → one successful heartbeat → next write fails instantly with
+`Service Discovery has not been performed yet` → disconnect → repeat. The
+failing write took 0 ms, so no timeout could ever have caught it.
+
+Added `is_connected(address)`, which requires both a registry entry **and**
+`client.is_connected`. It is now used by `message_consumer()`,
+`write_characteristic()` and `heartbeat()`.
+
+### 6. Disconnect callback
+`BleakClient` is constructed with `disconnected_callback=self._on_disconnect`,
+so a dropped link is noticed immediately instead of at the next heartbeat.
+The callback removes the client from the registry and drains the queue.
+
+### 7. Exponential reconnect back-off
+The reconnect wait was a fixed 2 s, so an unreachable device produced a
+tight connect loop that floods BlueZ and makes recovery *less* likely.
+The delay now doubles per failed cycle from 2 s up to a 300 s cap
+(`RECONNECT_BACKOFF_MIN` / `RECONNECT_BACKOFF_MAX`) and resets on every
+successful connect.
+
+### 8. Re-initialize after an unplanned reconnect
+A fresh BLE link starts unauthenticated — the device only answers status
+commands after the cmd 73/86 handshake. Previously `message_consumer()`
+reconnected but never re-ran it, so every following heartbeat returned
+nothing useful. Added `_reinitialize_after_reconnect()`, wrapped in a 90 s
+`asyncio.wait_for` because `init_device_connection()` contains unbounded
+retry loops.
+
+### 9. Connect errors no longer kill the consumer task
+The `else: raise` branch in `connect_device()` propagated any unrecognized
+error out of `message_consumer()`, killing the only task that performs
+reconnection — the add-on then sat idle with no BLE traffic and no further
+log output. All errors are now retried with a back-off;
+`asyncio.CancelledError` is re-raised so shutdown still works.
+
+### 10. Robust teardown and re-scan
+- `disconnect_device()` wraps `stop_notify`/`disconnect` in try/except with
+  timeouts, so a failing teardown on a dead link can no longer leave a
+  stale registry entry that blocks all future reconnects.
+- `connect_device()` re-scans once when the address is not in the scan
+  cache (filled only at startup), so a device that was briefly out of range
+  is reachable again.
+- Added timeouts to `start_notify` (20 s) and `read_gatt_char` (10 s).
+
 ---
 
 ## `utils.py`
@@ -198,3 +249,30 @@ The upstream `main.py` hard-coded the BLE keep-alive / poll interval.
 Changed to read `poll_interval` from the add-on options (via the
 `/data/options.json` file written by Home Assistant) and pass it as the
 `heartbeat_interval` argument, defaulting to 60 s.
+
+### Watchdog for dead background tasks
+The main loop was `while True: await asyncio.sleep(1)`, which kept running
+even after `message_consumer` or `heartbeat` had died. The add-on then
+looked healthy to the supervisor while doing nothing at all — no BLE
+traffic, no log output, no MQTT updates.
+
+The loop now checks both tasks each second and raises if either has
+finished, logging the task's exception. The process exits and the
+`while true` loop in `run.sh` restarts it.
+
+### Bounded startup handshake
+`init_device_connection()` is wrapped in a 120 s `asyncio.wait_for`. It
+contains a `while` loop that retries forever while `device.serial` is
+uninitialized, which could otherwise wedge startup permanently.
+
+### Correct task cleanup on shutdown
+- `heartbeat` is initialized to `None` before the `try`, so the `finally`
+  block no longer raises `UnboundLocalError` when
+  `init_device_connection()` fails before the task is created.
+- Both tasks are cancelled and awaited in `finally` *before* the device is
+  disconnected — a live `message_consumer` would otherwise immediately
+  reconnect the device being torn down.
+- Removed `await queue.join()` from the `KeyboardInterrupt` path: it blocks
+  indefinitely if queued commands cannot be delivered, preventing shutdown.
+- A failed initial connection now logs and returns instead of falling
+  through silently.

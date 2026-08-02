@@ -6,6 +6,11 @@ import asyncio
 import logging
 
 class BLEManager:
+    # Reconnect back-off: doubles after every failed connect cycle, capped so a
+    # permanently unreachable device does not spam BlueZ with connect attempts.
+    RECONNECT_BACKOFF_MIN = 2
+    RECONNECT_BACKOFF_MAX = 300
+
     def __init__(self, event_handler, commands, logger, callback=None):
         self.connected_devices = {}
         self.available_devices = {}
@@ -16,6 +21,25 @@ class BLEManager:
         self.device = False
         self.event_handler = event_handler
         self.commands = commands
+        self.reconnect_delay = self.RECONNECT_BACKOFF_MIN
+
+    def is_connected(self, address):
+        """True only if we hold a client for this address AND the transport is
+        still up. BlueZ can drop the link without bleak raising anything, so the
+        presence of a connected_devices entry alone is not proof of a live
+        connection — checking client.is_connected catches the silent drop that
+        otherwise surfaces as "Service Discovery has not been performed yet" on
+        the next write."""
+        client = self.connected_devices.get(address)
+        return bool(client and client.is_connected)
+
+    def _on_disconnect(self, client):
+        """Registered with bleak so a dropped link is noticed immediately rather
+        than at the next heartbeat write."""
+        address = client.address
+        self.logger.warning(f"Device {address} disconnected (BlueZ callback)")
+        self.connected_devices.pop(address, None)
+        self._drain_queue()
 
     async def scan(self):
         self.logger.info("Scanning for Petkit BLE devices...")
@@ -31,7 +55,8 @@ class BLEManager:
         if address in self.available_devices:
             for attempt in range(1, 4):
                 self.logger.info(f"Connecting to {address}... (attempt {attempt}/3)")
-                client = BleakClient(address, timeout=65.0)
+                client = BleakClient(address, timeout=65.0,
+                                     disconnected_callback=self._on_disconnect)
                 try:
                     await client.connect()
                     # Short wait for BlueZ to finish propagating GATT service
@@ -43,7 +68,10 @@ class BLEManager:
                     self.connected_devices[address] = client
                     self.logger.info(f"Connected to {address}")
                     await self.start_notifications(address, Constants.READ_UUID)
+                    self.reconnect_delay = self.RECONNECT_BACKOFF_MIN
                     return True
+                except asyncio.CancelledError:
+                    raise
                 except Exception as e:
                     err = str(e)
                     if "NotPermitted" in err or "Notify acquired" in err:
@@ -53,7 +81,15 @@ class BLEManager:
                         wait = 5
                         self.logger.warning(f"BLE service discovery failed (Not connected), waiting {wait}s before retry...")
                     else:
-                        raise
+                        # Every other error is retried too rather than raised.
+                        # Propagating here kills the message_consumer task that
+                        # owns reconnection, leaving the add-on permanently dead
+                        # with no BLE activity and no further log output.
+                        wait = attempt * 5
+                        self.logger.warning(
+                            f"Connect attempt {attempt}/3 failed ({type(e).__name__}: {e}), "
+                            f"waiting {wait}s before retry..."
+                        )
                     try:
                         await client.disconnect()
                     except Exception:
@@ -64,7 +100,20 @@ class BLEManager:
             self.logger.error(f"Could not connect to {address} after 3 attempts")
             return False
         else:
-            self.logger.error(f"Device {address} not found")
+            # Not in the cached scan results — re-scan once. The cache is filled
+            # at startup only, so a device that was briefly out of range (or an
+            # adapter that was reset) would otherwise never be reachable again.
+            self.logger.warning(f"Device {address} not in scan cache, re-scanning...")
+            try:
+                await asyncio.wait_for(self.scan(), timeout=60.0)
+            except Exception as e:
+                self.logger.error(f"Re-scan failed: {e}")
+                return False
+
+            if address in self.available_devices:
+                return await self.connect_device(address)
+
+            self.logger.error(f"Device {address} not found after re-scan")
             return False
 
     async def disconnect_device(self, address):
@@ -72,11 +121,22 @@ class BLEManager:
             self.logger.info(f"Disconnecting from {address}...")
             client = self.connected_devices[address]
 
-            if client.is_connected:
-                await client.stop_notify(Constants.READ_UUID)
+            # Tear-down on an already-dead link raises; swallow those errors so
+            # the client is always removed from the registry. Leaving a stale
+            # entry behind makes is_connected()/message_consumer believe the
+            # device is still usable and blocks any reconnect.
+            try:
+                if client.is_connected:
+                    await asyncio.wait_for(client.stop_notify(Constants.READ_UUID), timeout=5.0)
+            except Exception as e:
+                self.logger.debug(f"stop_notify during disconnect failed (ignored): {e}")
 
-            await client.disconnect()
-            del self.connected_devices[address]
+            try:
+                await asyncio.wait_for(client.disconnect(), timeout=10.0)
+            except Exception as e:
+                self.logger.debug(f"disconnect failed (ignored): {e}")
+
+            self.connected_devices.pop(address, None)
             self.logger.info(f"Disconnected from {address}")
             return True
         else:
@@ -87,7 +147,10 @@ class BLEManager:
         if address in self.connected_devices:
             self.logger.info(f"Reading characteristic {characteristic_uuid} from {address}")
             client = self.connected_devices[address]
-            data = await client.read_gatt_char(characteristic_uuid)
+            data = await asyncio.wait_for(
+                client.read_gatt_char(characteristic_uuid),
+                timeout=10.0
+            )
             self.logger.info(f"Read data: {data}")
             return data
         else:
@@ -95,7 +158,7 @@ class BLEManager:
             return None
 
     async def write_characteristic(self, address, characteristic_uuid, data):
-        if address in self.connected_devices:
+        if self.is_connected(address):
             client = self.connected_devices[address]
 
             try:
@@ -120,14 +183,23 @@ class BLEManager:
                 return False
 
         else:
-            self.logger.error(f"Device {address} not connected")
+            # Drop a stale client so message_consumer reconnects instead of
+            # retrying writes against a dead handle forever.
+            if address in self.connected_devices:
+                self.logger.warning(f"Device {address} link is down, dropping stale client")
+                await self.disconnect_device(address)
+            else:
+                self.logger.error(f"Device {address} not connected")
             return False
 
     async def start_notifications(self, address, characteristic_uuid):
         if address in self.connected_devices:
             self.logger.info(f"Starting notifications for {characteristic_uuid} on {address}")
             client = self.connected_devices[address]
-            await client.start_notify(characteristic_uuid, self._handle_notification_wrapper)
+            await asyncio.wait_for(
+                client.start_notify(characteristic_uuid, self._handle_notification_wrapper),
+                timeout=20.0
+            )
             self.logger.info(f"Notifications started for {characteristic_uuid} on {address}")
             return True
         else:
@@ -155,6 +227,12 @@ class BLEManager:
                 await asyncio.sleep(5)
                 continue
             for address in list(self.connected_devices.keys()):
+                # Skip a device whose link is already down — message_consumer
+                # owns the reconnect. Queueing commands onto a dead link only
+                # fills the queue with work that will be drained anyway.
+                if not self.is_connected(address):
+                    self.logger.debug(f"Skipping heartbeat for {address}: link is down")
+                    continue
                 try:
                     await self.commands.get_battery()  # To update voltage
                     await self.commands.get_device_update()
@@ -182,16 +260,57 @@ class BLEManager:
 
     async def message_consumer(self, address, characteristic_uuid):
         while True:
-            if not self.connected_devices.get(address):
-                self.logger.warning(f"Device {address} not connected. Draining queue and reconnecting...")
+            # Check the live link, not just the registry entry — a silently
+            # dropped BlueZ connection leaves the entry in place and would
+            # otherwise send us into an endless connect/one-good-write/fail loop.
+            if not self.is_connected(address):
+                self.logger.warning(
+                    f"Device {address} not connected. Draining queue and "
+                    f"reconnecting in {self.reconnect_delay}s..."
+                )
                 self._drain_queue()
-                await asyncio.sleep(2)
-                await self.connect_device(address)
+                await asyncio.sleep(self.reconnect_delay)
+
+                if await self.connect_device(address):
+                    # connect_device() resets reconnect_delay on success.
+                    await self._reinitialize_after_reconnect()
+                else:
+                    self.reconnect_delay = min(self.reconnect_delay * 2,
+                                               self.RECONNECT_BACKOFF_MAX)
+                    self.logger.warning(
+                        f"Reconnect to {address} failed, next attempt in "
+                        f"{self.reconnect_delay}s"
+                    )
                 continue
 
             message = await self.queue.get()
             await self.write_characteristic(address, characteristic_uuid, message)
             self.queue.task_done()
+
+    async def _reinitialize_after_reconnect(self):
+        """Re-run the init handshake after an unplanned reconnect.
+
+        A fresh BLE link starts unauthenticated: the device only answers status
+        commands once cmd 73/86 have completed. Without this the reconnect
+        succeeds but every subsequent heartbeat returns nothing useful.
+        """
+        device = getattr(self.commands, "device", None)
+
+        if device is not None:
+            device.initialization_state = False
+            device.device_initialized = False
+
+        # Hard cap: init_device_connection() contains unbounded retry loops that
+        # never return if the device stops answering mid-handshake. Without this
+        # the consumer task would hang and no reconnect could ever be attempted.
+        try:
+            await asyncio.wait_for(self.commands.init_device_connection(), timeout=90.0)
+            self.logger.info("Re-initialized device after reconnect")
+        except asyncio.TimeoutError:
+            self.logger.error("Re-initialization timed out after 90s, forcing reconnect")
+            await self.disconnect_device(self.commands.device.mac)
+        except Exception as e:
+            self.logger.error(f"Re-initialization after reconnect failed: {e}")
 
     async def message_producer(self, message):
         await self.queue.put(message)
