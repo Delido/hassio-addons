@@ -4,6 +4,7 @@ from .utils import Utils
 from .device import Device
 import asyncio
 import logging
+import time
 
 class BLEManager:
     # Reconnect back-off: doubles after every failed connect cycle, capped so a
@@ -22,6 +23,9 @@ class BLEManager:
         self.event_handler = event_handler
         self.commands = commands
         self.reconnect_delay = self.RECONNECT_BACKOFF_MIN
+        # Monotonic time of the last notification received from the device.
+        # Read by the watchdog thread in main.py to detect a wedged add-on.
+        self.last_notification = time.monotonic()
 
     def is_connected(self, address):
         """True only if we hold a client for this address AND the transport is
@@ -73,6 +77,13 @@ class BLEManager:
                 except asyncio.CancelledError:
                     raise
                 except Exception as e:
+                    # bleak's internal connect timeout can turn an external
+                    # cancellation (e.g. from an outer asyncio.wait_for) into a
+                    # TimeoutError. Retrying then swallows the cancellation and
+                    # the outer timeout never takes effect — honour it here.
+                    task = asyncio.current_task()
+                    if task is not None and task.cancelling():
+                        raise asyncio.CancelledError() from e
                     err = str(e)
                     if "NotPermitted" in err or "Notify acquired" in err:
                         wait = attempt * 10
@@ -207,6 +218,7 @@ class BLEManager:
             return False
 
     async def _handle_notification_wrapper(self, sender, data):
+        self.last_notification = time.monotonic()
         self.logger.debug(f"RAW BLE NOTIFICATION: hex={data.hex()} bytes={list(data)}")
         await self.event_handler.handle_notification(sender, data)
 
@@ -310,7 +322,10 @@ class BLEManager:
             self.logger.error("Re-initialization timed out after 90s, forcing reconnect")
             await self.disconnect_device(self.commands.device.mac)
         except Exception as e:
-            self.logger.error(f"Re-initialization after reconnect failed: {e}")
+            # Link may be up but unauthenticated — drop it so the next loop
+            # iteration reconnects instead of polling a device that won't answer.
+            self.logger.error(f"Re-initialization after reconnect failed: {e}, forcing reconnect")
+            await self.disconnect_device(self.commands.device.mac)
 
     async def message_producer(self, message):
         await self.queue.put(message)

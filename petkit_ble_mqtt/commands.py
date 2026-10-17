@@ -34,43 +34,70 @@ class Commands:
         self.device.type_code = device_properties['type_code']
         self.device.alias = device_properties['alias']
     
-    async def init_device_connection(self):
-        # Basically this function secures the sequence
-        # of which we're sending the commands.
-        # At the same time, we're ensuring we're getting
-        # the necessary parameters registered - e.g. serial
+    async def _handshake(self):
+        """Run one cmd 213/73/86/84 handshake. Returns True once the device
+        reports itself initialized."""
         await self.get_device_details()
         await asyncio.sleep(1.5)
-        
+
         await self.init_device()
-        
+
         await self.get_device_sync()
         await asyncio.sleep(0.75)
         await self.set_datetime()
         await asyncio.sleep(0.75)
-        
-        while self.device.serial in "Uninitialized" or self.device.serial == 0:
+
+        # Bounded: on a dead link the serial never arrives, and an unbounded
+        # loop here would spin forever.
+        for _ in range(20):
+            if not (self.device.serial in "Uninitialized" or self.device.serial == 0):
+                break
             await self.get_device_details()
             await asyncio.sleep(1.5)
+        else:
+            self.logger.warning("Device serial not received during handshake")
+            return False
 
         # Wait up to 3s for cmd 86 (sync) response to set device_initialized.
         # Without this, the check below fires before the BLE notification arrives
         # (race condition: sleep(0.75) is shorter than the typical ~1s response time).
         for _ in range(6):
             if self.device.device_initialized:
-                break
+                return True
             await asyncio.sleep(0.5)
 
-        if not self.device.device_initialized:
+        return False
+
+    async def init_device_connection(self, max_attempts=3):
+        # Basically this function secures the sequence
+        # of which we're sending the commands.
+        # At the same time, we're ensuring we're getting
+        # the necessary parameters registered - e.g. serial
+        #
+        # Iterative, not recursive: upstream called itself again after every
+        # failed handshake — even when the reconnect in between had failed.
+        # With the device unreachable this recursed for hours until Python hit
+        # its recursion limit, after which every connect attempt failed
+        # instantly with RecursionError and the add-on was dead for good.
+        for attempt in range(1, max_attempts + 1):
+            if await self._handshake():
+                break
+
+            if attempt == max_attempts:
+                raise RuntimeError(f"Device handshake failed after {max_attempts} attempts")
+
+            self.logger.warning(
+                f"Device not initialized (handshake {attempt}/{max_attempts}), reconnecting..."
+            )
             await self.init_device()
             await asyncio.sleep(3.0)
-            
+
             await self.ble_manager.disconnect_device(self.device.mac)
             await asyncio.sleep(1.0)
-            await self.ble_manager.connect_device(self.device.mac)
+            if not await self.ble_manager.connect_device(self.device.mac):
+                raise RuntimeError("Reconnect during handshake failed")
             await asyncio.sleep(1.0)
-            await self.init_device_connection()
-        
+
         await self.get_device_info()
         await asyncio.sleep(0.75)
         await self.get_device_type()

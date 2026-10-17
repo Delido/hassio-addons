@@ -82,6 +82,19 @@ log output. All errors are now retried with a back-off;
   is reachable again.
 - Added timeouts to `start_notify` (20 s) and `read_gatt_char` (10 s).
 
+### 11. Honour cancellation during connect
+bleak's internal connect timeout can convert an external cancellation (from
+an outer `asyncio.wait_for`) into a `TimeoutError`. The generic retry branch
+then swallowed it, so the outer timeout never took effect and the caller hung
+for as long as the retries went on. `connect_device()` now checks
+`current_task().cancelling()` and re-raises `CancelledError`.
+
+`_reinitialize_after_reconnect()` also disconnects when the handshake fails,
+so the consumer reconnects instead of polling an unauthenticated link.
+
+The notification wrapper records `last_notification` for the stall watchdog
+in `main.py`.
+
 ---
 
 ## `utils.py`
@@ -169,6 +182,19 @@ spurious second init cycle (forced disconnect + reconnect).
 
 Added a polling loop that waits up to 3 s (6 × 0.5 s) for
 `device_initialized` to become truthy before executing the check.
+
+### Iterative handshake instead of recursion
+After a failed handshake, upstream `init_device_connection()` disconnected,
+reconnected and called itself again — ignoring whether the reconnect had
+succeeded. With the fountain unreachable this recursed for hours (combined
+with the swallowed cancellation above, the outer timeouts never stopped it)
+until Python hit its recursion limit. From then on every connect attempt
+failed instantly with `RecursionError` and the add-on stayed dead for days
+without the process ever exiting.
+
+The handshake is now a bounded loop (3 attempts); a failed reconnect or the
+last failed attempt raises `RuntimeError`. The serial-wait loop is bounded to
+20 tries as well.
 
 ---
 
@@ -276,3 +302,11 @@ uninitialized, which could otherwise wedge startup permanently.
   indefinitely if queued commands cannot be delivered, preventing shutdown.
 - A failed initial connection now logs and returns instead of falling
   through silently.
+
+### Stall watchdog thread
+A daemon thread, independent of the event loop, hard-exits the process
+(`os._exit(1)`) when no BLE notification has arrived for
+`max(900 s, 10 × heartbeat_interval)`; `run.sh` then starts a fresh process.
+This catches any wedge — swallowed cancellations, hung BlueZ calls, a blocked
+event loop — that the task watchdog cannot see because the tasks are still
+technically running.

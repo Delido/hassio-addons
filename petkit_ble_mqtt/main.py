@@ -1,9 +1,17 @@
 import argparse
 import asyncio
 import logging
+import os
+import threading
+import time
 from PetkitW5BLEMQTT import BLEManager, Constants, Device, EventHandlers, Commands, Logger, MQTTClient, MQTTCallback, MQTTPayloads, Utils
 
 class Manager:
+    # Minimum time without any BLE notification before the watchdog kills the
+    # process. Must comfortably exceed one full reconnect cycle (3 connect
+    # attempts with 65s timeouts plus back-off).
+    STALL_TIMEOUT_MIN = 900
+
     def __init__(self, address, mqtt_enabled=False, mqtt_settings=None, logging_level=logging.INFO, heartbeat_interval=60):
         self.address = address
         self.device = Device(self.address)
@@ -31,10 +39,42 @@ class Manager:
             self.mqtt_client.connect()
             self.event_handlers.callback = self.mqtt_client.publish_state
 
+    def start_stall_watchdog(self):
+        """Last line of defence, independent of asyncio.
+
+        Whatever wedges the add-on — a swallowed cancellation, a hung BlueZ
+        call, a blocked event loop — the visible symptom is the same: no more
+        notifications from the device. This thread hard-exits the process once
+        that has lasted too long, so run.sh starts a fresh one. It runs outside
+        the event loop on purpose: an in-loop watchdog dies with the loop.
+        """
+        stall_timeout = max(self.STALL_TIMEOUT_MIN, 10 * self.heartbeat_interval)
+
+        def watch():
+            while True:
+                time.sleep(30)
+                silent = time.monotonic() - self.ble_manager.last_notification
+                if silent > stall_timeout:
+                    self.logger.error(
+                        f"Watchdog: no data from device for {int(silent)}s "
+                        f"(limit {stall_timeout}s) — exiting for restart"
+                    )
+                    try:
+                        if self.mqtt_client:
+                            self.mqtt_client.publish_availability(self.device.mac_readable, "offline")
+                    except Exception:
+                        pass
+                    logging.shutdown()
+                    os._exit(1)
+
+        threading.Thread(target=watch, name="stall-watchdog", daemon=True).start()
+
     def setup_logging(self, logging_level):
         logging.basicConfig(level=logging_level, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
     async def run(self, address):
+        self.start_stall_watchdog()
+
         await self.ble_manager.scan()
 
         self.logger.info(f"Connecting...")
