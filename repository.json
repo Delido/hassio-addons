@@ -22,6 +22,11 @@
       "slug": "bitwarden_lite",
       "name": "Bitwarden Lite",
       "description": "Self-hosted Bitwarden password manager (Lite / unified deployment)"
+    },
+    {
+      "slug": "runasadmin_server",
+      "name": "RunAsAdmin Server",
+      "description": "Zentrale Steuerung und Verlauf fuer RunAsAdmin auf den Kinder-PCs"
     }
   ]
 }
