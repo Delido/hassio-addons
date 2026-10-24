@@ -67,6 +67,10 @@ chmod -R 775 "${SHARE_LOGOS}" 2>/dev/null || true
 echo "[wallos-init] Persistent storage ready"
 
 # --- Database initialization ---
+# Wallos scripts resolve includes/ and migrations/ relative to the working directory
+# (upstream image: WORKDIR /var/www/html); s6 runs cont-init from /
+cd /var/www/html || exit 1
+
 echo "[wallos-init] Running database creation..."
 /usr/local/bin/php /var/www/html/endpoints/cronjobs/createdatabase.php 2>&1 || echo "[wallos-init] WARNING: createdatabase.php returned an error"
 

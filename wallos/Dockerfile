@@ -52,8 +52,9 @@ RUN curl -L -s -o /usr/bin/bashio \
     "https://github.com/home-assistant/tempio/releases/download/${TEMPIO_VERSION}/tempio_amd64" && \
     chmod a+x /usr/bin/tempio
 
-# Clone Wallos from GitHub
-RUN git clone --depth 1 https://github.com/ellite/Wallos.git /tmp/wallos && \
+# Clone Wallos from GitHub (pinned - bump WALLOS_VERSION together with the add-on version)
+ARG WALLOS_VERSION=v5.10.2
+RUN git clone --depth 1 --branch ${WALLOS_VERSION} https://github.com/ellite/Wallos.git /tmp/wallos && \
     cp -r /tmp/wallos/* /var/www/html/ && \
     rm -rf /tmp/wallos
 
@@ -100,7 +101,8 @@ RUN if [ -f /var/www/html/cronjobs ]; then \
     mkdir -p /var/log/cron && \
     chown -R www-data:www-data /var/www/html && \
     echo 'pm.max_children = 15' >> /usr/local/etc/php-fpm.d/zz-docker.conf && \
-    echo 'pm.max_requests = 500' >> /usr/local/etc/php-fpm.d/zz-docker.conf
+    echo 'pm.max_requests = 500' >> /usr/local/etc/php-fpm.d/zz-docker.conf && \
+    printf 'upload_max_filesize = 256M\npost_max_size = 256M\n' > /usr/local/etc/php/conf.d/wallos-uploads.ini
 
 EXPOSE 80
 
